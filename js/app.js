@@ -178,13 +178,25 @@
       controls.update(); controls.saveState();
       glb = { THREE: THREE, renderer: renderer, scene: scene, camera: camera, controls: controls, groups: {}, groupMats: {}, caseMats: [], ready: false };
       var loader = new GLTFLoader();
-      return new Promise(function (resolve, reject) {
-        var to = setTimeout(function () { reject(new Error('GLB timeout')); }, 25000);
-        loader.load('assets/case.glb',
-          function (g) { clearTimeout(to); resolve(g); },
-          undefined,
-          function (e) { clearTimeout(to); reject(e || new Error('GLB load error')); });
-      }).then(function (gltf) {
+      // Nguồn GLB: ưu tiên file local (khi chạy local / bản deploy đầy đủ), sau đó tới CDN
+      // jsDelivr trỏ đúng commit GitHub chứa model (Vercel không nhận file >100KB qua kênh deploy hiện tại).
+      var GLB_URLS = [
+        'assets/case.glb',
+        'https://cdn.jsdelivr.net/gh/thantaigocua1515-cmd/rigcheck-vn@0a7da4bbf221cf7046f53e26877a5bbc53d79acc/assets/case.glb',
+      ];
+      function tryLoad(idx) {
+        return new Promise(function (resolve, reject) {
+          var to = setTimeout(function () { reject(new Error('GLB timeout')); }, 25000);
+          loader.load(GLB_URLS[idx],
+            function (g) { clearTimeout(to); resolve(g); },
+            undefined,
+            function (e) { clearTimeout(to); reject(e || new Error('GLB load error')); });
+        }).catch(function (err) {
+          if (idx + 1 < GLB_URLS.length) return tryLoad(idx + 1);
+          throw err;
+        });
+      }
+      return tryLoad(0).then(function (gltf) {
         scene.add(gltf.scene);
         if (!collectGLBGroups(gltf.scene)) throw new Error('GLB thiếu nhóm CASE/GPU_STD');
         box.insertBefore(renderer.domElement, box.firstChild);
