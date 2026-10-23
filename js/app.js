@@ -9,6 +9,19 @@
   var DATA = window.RIGCHECK_DATA;
   var FORM_ORDER = { ITX: 1, mATX: 2, ATX: 3 };
 
+  // Hồ sơ yêu cầu (req) của phần mềm theo bản nhúng — dùng để gắn vào dữ liệu sống
+  // từ Supabase khi bảng software_apps chưa có cột req (xem loadFromSupabase).
+  var EMBEDDED_SW_REQ = {};
+  (DATA.software || []).forEach(function (s) { if (s.req) EMBEDDED_SW_REQ[s.id] = s.req; });
+
+  function statsHtml() {
+    var aiCount = DATA.aiModels ? DATA.aiModels.length : 0;
+    return '<div class="stat"><b>' + CATEGORIES.reduce(function (s, c) { return s + DATA[c.key].length; }, 0) + '</b><small>linh kiện PC</small></div>' +
+      '<div class="stat"><b>' + DATA.laptops.length + '</b><small>mẫu laptop gaming</small></div>' +
+      '<div class="stat"><b>' + DATA.games.length + '</b><small>game hỗ trợ check FPS</small></div>' +
+      '<div class="stat"><b>' + (DATA.software.length + aiCount) + '</b><small>' + DATA.software.length + ' phần mềm &amp; ' + aiCount + ' model AI</small></div>';
+  }
+
   var CATEGORIES = [
     { key: 'cpus',       label: 'CPU',        singular: 'CPU' },
     { key: 'gpus',       label: 'GPU (Card đồ hoạ)', singular: 'GPU' },
@@ -520,24 +533,117 @@
     });
   }
 
-  /* ---------- Tab Phần mềm & AI ---------- */
-  function swCard(item, kind) {
-    return '<div class="sw-card"><span class="badge">Sắp ra mắt</span><h3 style="margin-top:8px">' + esc(item.name) + '</h3>' +
-      '<div class="small muted">' + esc(item.category) + ' · ' + esc(item.focus) + '</div><dl>' +
-      '<dt>Mức phù hợp với build hiện tại</dt><dd>Sắp cập nhật</dd>' +
-      '<dt>' + (kind === 'ai' ? 'VRAM / RAM yêu cầu' : 'VRAM / RAM khuyến nghị') + '</dt><dd>Sắp cập nhật</dd>' +
-      '<dt>Cấu hình đề xuất</dt><dd>Sắp cập nhật</dd></dl></div>';
+  /* ---------- Tab Phần mềm & Model AI: chấm điểm thật theo build ----------
+   * Điểm từng yếu tố (0–100): đạt ≥ mức khuyến nghị (rec) = 100; nằm giữa tối thiểu (min)
+   * và rec thì nội suy 50→100; dưới min thì tỉ lệ theo min (tối đa 50).
+   * Yếu tố GPU gộp hiệu năng GPU (60%) + VRAM (40%). Điểm tổng = trung bình theo trọng số
+   * cpuW/gpuW/ramW trong hồ sơ req của từng phần mềm (xem js/data.js).
+   * ⚠️ Đây là ước tính từ thông số phần cứng + yêu cầu công bố của hãng — KHÔNG phải
+   * benchmark đo trực tiếp trên máy thật. */
+  function subScore(value, min, rec) {
+    if (value >= rec) return 100;
+    if (value >= min) return Math.round(50 + 50 * (value - min) / Math.max(1, rec - min));
+    return Math.round(50 * value / Math.max(1, min));
   }
+  function scoreSoftware(sw) {
+    var cpu = part('cpus'), gpu = part('gpus'), ram = part('rams');
+    if (!sw.req || !cpu || !gpu || !ram) return null;
+    var r = sw.req;
+    var cpuS = subScore(cpu.score, r.minCpu, r.recCpu);
+    var gpuS = Math.round(0.6 * subScore(gpu.perf, r.minGpu, r.recGpu) + 0.4 * subScore(gpu.vram, r.minVram, r.recVram));
+    var ramS = subScore(ram.capacity, r.minRam, r.recRam);
+    return { cpu: cpuS, gpu: gpuS, ram: ramS, total: Math.round(cpuS * r.cpuW + gpuS * r.gpuW + ramS * r.ramW) };
+  }
+  function swLevel(total) {
+    if (total >= 80) return { label: 'Rất tốt', cls: 'ok' };
+    if (total >= 60) return { label: 'Mượt', cls: 'info' };
+    if (total >= 40) return { label: 'Chạy cơ bản', cls: 'warn' };
+    return { label: 'Chưa đáp ứng', cls: 'err' };
+  }
+  // Gợi ý nâng cấp: yếu tố yếu nhất → món rẻ nhất trong catalog đạt mức khuyến nghị cho yếu tố đó
+  // (CPU ưu tiên cùng socket với main hiện tại, RAM ưu tiên đúng DDR4/DDR5 của main).
+  function upgradeHint(sw, sc) {
+    var r = sw.req, main = part('mainboards');
+    var factors = [{ k: 'cpu', s: sc.cpu, label: 'CPU' }, { k: 'gpu', s: sc.gpu, label: 'GPU' }, { k: 'ram', s: sc.ram, label: 'RAM' }];
+    factors.sort(function (a, b) { return a.s - b.s; });
+    var w = factors[0];
+    if (w.s >= 100) return '';
+    var pick = null;
+    if (w.k === 'cpu') {
+      pick = DATA.cpus.filter(function (c) { return c.score >= r.recCpu && (!main || c.socket === main.socket); }).sort(function (a, b) { return a.price - b.price; })[0] ||
+             DATA.cpus.filter(function (c) { return c.score >= r.recCpu; }).sort(function (a, b) { return a.price - b.price; })[0];
+    } else if (w.k === 'gpu') {
+      pick = DATA.gpus.filter(function (g) { return g.perf >= r.recGpu && g.vram >= r.recVram; }).sort(function (a, b) { return a.price - b.price; })[0];
+    } else {
+      pick = DATA.rams.filter(function (x) { return x.capacity >= r.recRam && (!main || x.type === main.ramType); }).sort(function (a, b) { return a.price - b.price; })[0] ||
+             DATA.rams.filter(function (x) { return x.capacity >= r.recRam; }).sort(function (a, b) { return a.price - b.price; })[0];
+    }
+    var cur = w.k === 'cpu' ? part('cpus') : w.k === 'gpu' ? part('gpus') : part('rams');
+    if (!pick || (cur && pick.id === cur.id)) return '';
+    return '<div class="up-note">⬆️ Điểm yếu nhất là <strong>' + w.label + '</strong> (' + w.s + '/100). Món rẻ nhất đạt mức khuyến nghị: <strong>' + esc(pick.name) + '</strong> — ' + fmt(pick.price) + '</div>';
+  }
+  function barRow(label, score) {
+    return '<div class="bar-row"><span class="bar-label">' + label + '</span><span class="bar-track"><span class="bar-fill" style="width:' + score + '%"></span></span><span class="bar-val">' + score + '</span></div>';
+  }
+  function swCard(item) {
+    var sc = scoreSoftware(item);
+    if (!sc) {
+      return '<div class="sw-card"><div class="sw-head"><h3>' + esc(item.name) + '</h3></div>' +
+        '<div class="small muted">' + esc(item.category) + ' · ' + esc(item.focus) + '</div>' +
+        '<p class="small muted" style="margin:10px 0 0">Chưa có hồ sơ yêu cầu để chấm điểm phần mềm này.</p></div>';
+    }
+    var lv = swLevel(sc.total), r = item.req;
+    return '<div class="sw-card"><div class="sw-head"><h3>' + esc(item.name) + '</h3><span class="badge ' + lv.cls + '">' + lv.label + ' · ' + sc.total + '</span></div>' +
+      '<div class="small muted">' + esc(item.category) + ' · ' + esc(item.focus) + '</div>' +
+      '<div class="mini-bars">' + barRow('CPU', sc.cpu) + barRow('GPU', sc.gpu) + barRow('RAM', sc.ram) + '</div><dl>' +
+      '<dt>Yêu cầu khuyến nghị</dt><dd>VRAM ' + r.recVram + 'GB · RAM ' + r.recRam + 'GB</dd>' +
+      '<dt>Cấu hình đề xuất</dt><dd>CPU điểm ≥ ' + r.recCpu + ' · GPU hiệu năng ≥ ' + r.recGpu + ', VRAM ≥ ' + r.recVram + 'GB · RAM ≥ ' + r.recRam + 'GB</dd></dl>' +
+      (sc.total < 80 ? upgradeHint(item, sc) : '') + '</div>';
+  }
+
+  /* ----- Model AI: đối chiếu VRAM cần (theo mức lượng tử hoá) với GPU hiện tại -----
+   * LLM không vừa VRAM nhưng tổng VRAM + RAM hệ thống đủ chứa thì chạy theo cơ chế
+   * offload (mượn RAM) — chậm hơn hẳn; model ảnh không offload nên thiếu là không chạy. */
+  var QUANT_LABEL = { fp16: 'FP16', q8: 'Q8', q4: 'Q4' };
+  var QUANT_BYTES = { fp16: 2, q8: 1.0, q4: 0.55 }; // GB cho mỗi 1B tham số — dùng ước tính token/s
+  function aiQuantStatus(model, qk, gpu, ramGB) {
+    var need = model.vram ? model.vram[qk] : null;
+    if (need == null) return null;
+    if (gpu && need <= gpu.vram) return { label: 'Chạy tốt', cls: 'ok' };
+    if (model.kind === 'LLM' && gpu && ramGB >= 16 && need <= gpu.vram + ramGB) return { label: 'Chạy được (mượn RAM, chậm)', cls: 'warn' };
+    return { label: 'Không đủ VRAM', cls: 'err' };
+  }
+  function aiCard(model) {
+    var gpu = part('gpus'), ram = part('rams');
+    var ramGB = ram ? ram.capacity : 0;
+    var rows = '', bestTok = null;
+    ['fp16', 'q8', 'q4'].forEach(function (qk) {
+      var st = aiQuantStatus(model, qk, gpu, ramGB);
+      if (!st) return;
+      rows += '<tr><td>' + QUANT_LABEL[qk] + '</td><td>' + model.vram[qk] + 'GB</td><td><span class="badge ' + st.cls + '">' + st.label + '</span></td></tr>';
+      // Token/s chỉ ước tính cho LLM ở mức lượng tử tốt nhất chạy trọn trong VRAM
+      if (model.kind === 'LLM' && st.cls === 'ok' && !bestTok && gpu) {
+        var paramsB = parseFloat(model.params) || 0;
+        if (paramsB > 0) bestTok = { q: QUANT_LABEL[qk], tok: Math.max(1, Math.round(gpu.perf * 2.2 / (paramsB * QUANT_BYTES[qk]))) };
+      }
+    });
+    return '<div class="sw-card"><div class="sw-head"><h3>' + esc(model.name) + '</h3><span class="badge info">' + esc(model.kind) + ' · ' + esc(model.params) + '</span></div>' +
+      '<div class="small muted">' + esc(model.note || '') + '</div>' +
+      '<table class="ai-vram"><thead><tr><th>Mức</th><th>VRAM cần</th><th>Với GPU hiện tại</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      (bestTok ? '<p class="small" style="margin:8px 0 0">⚡ Ước tính ~<strong>' + bestTok.tok + ' token/s</strong> ở mức ' + bestTok.q + ' — số ước tính theo hiệu năng GPU, không phải đo thật.</p>' : '') +
+      '<p class="small muted" style="margin:8px 0 0">Chạy bằng: <strong>' + esc(model.runner || '') + '</strong></p></div>';
+  }
+
   function renderSoftwareBuild() {
     var cpu = part('cpus'), gpu = part('gpus'), ram = part('rams');
     var r = checkCompat();
     $('softwareBuildSummary').innerHTML = 'CPU: <strong>' + esc(cpu ? cpu.name : '—') + '</strong> · GPU: <strong>' + esc(gpu ? gpu.name : '—') + '</strong>' +
       (gpu ? ' (' + gpu.vram + 'GB VRAM)' : '') + ' · RAM: <strong>' + esc(ram ? ram.name : '—') + '</strong> · Tổng giá: <strong>' + fmt(r.totalPrice) + '</strong>' +
-      '<br><span class="muted">Khi mục này ra mắt, chính build trên sẽ được chấm mức phù hợp cho từng phần mềm và công cụ AI bên dưới.</span>';
+      '<br><span class="muted">Mức phù hợp cho từng phần mềm và khả năng chạy từng model AI bên dưới được chấm trực tiếp trên chính build này — đổi linh kiện ở tab Build là điểm tự cập nhật.</span>';
   }
   function renderSoftware() {
-    $('softwareGrid').innerHTML = DATA.software.map(function (s) { return swCard(s, 'sw'); }).join('');
-    $('aiGrid').innerHTML = DATA.aiTools.map(function (s) { return swCard(s, 'ai'); }).join('');
+    $('softwareGrid').innerHTML = DATA.software.map(swCard).join('');
+    $('aiGrid').innerHTML = (DATA.aiModels || []).map(aiCard).join('');
     renderSoftwareBuild();
   }
 
@@ -557,15 +663,25 @@
         return res.json();
       });
     }
+    // Model AI: bảng riêng ai_models, fetch TÁCH khỏi luồng chính — DB chưa có bảng này
+    // (chưa chạy update-software-model-ai.sql) cũng không làm sập dữ liệu sống, app giữ bản nhúng.
+    get('ai_models?select=slug,name,kind,params,vram,runner,note&limit=100')
+      .then(function (rows) {
+        if (rows && rows.length) {
+          DATA.aiModels = rows.map(function (m) { return { id: m.slug, name: m.name, kind: m.kind, params: m.params, vram: m.vram || {}, runner: m.runner, note: m.note }; });
+          $('statsStrip').innerHTML = statsHtml();
+          renderSoftware();
+        }
+      })
+      .catch(function () { /* chưa có bảng ai_models → giữ danh sách model nhúng */ });
     Promise.all([
       get('components?select=category,slug,name,brand,specs,price_vnd,updated_at&limit=1000'),
       get('laptops?select=slug,name,brand,cpu,cpu_score,gpu,gpu_perf,tgp_watts,ram_gb,price_vnd,updated_at&limit=200'),
       get('games?select=slug,name,genre,base_fps,cpu_weight,updated_at&limit=200'),
       get('software_apps?select=slug,name,category,focus&limit=100'),
-      get('ai_tools?select=slug,name,category,focus&limit=100'),
     ])
       .then(function (results) {
-        var comps = results[0], laptops = results[1], games = results[2], software = results[3], aiTools = results[4];
+        var comps = results[0], laptops = results[1], games = results[2], software = results[3];
         if (!comps.length || !laptops.length || !games.length) throw new Error('empty');
         // Map components: specs jsonb chứa đúng các trường app cần (socket, tdp, perf...)
         var byCat = {};
@@ -583,8 +699,8 @@
         DATA.games = games.map(function (g) {
           return { id: g.slug, name: g.name, genre: g.genre, baseFps: Number(g.base_fps) || 0, cpuWeight: Number(g.cpu_weight) || 0 };
         });
-        if (software.length) DATA.software = software.map(function (s) { return { id: s.slug, name: s.name, category: s.category, focus: s.focus }; });
-        if (aiTools.length) DATA.aiTools = aiTools.map(function (s) { return { id: s.slug, name: s.name, category: s.category, focus: s.focus }; });
+        // DB software_apps hiện chưa có cột req → gắn hồ sơ yêu cầu từ bản nhúng theo slug.
+        if (software.length) DATA.software = software.map(function (s) { return { id: s.slug, name: s.name, category: s.category, focus: s.focus, req: EMBEDDED_SW_REQ[s.slug] || null }; });
         // Giữ lựa chọn hiện tại nếu còn tồn tại trong dữ liệu sống, không thì về món đầu tiên
         CATEGORIES.forEach(function (c) { if (!findById(DATA[c.key], selected[c.key])) selected[c.key] = DATA[c.key][0].id; });
         if (!findById(DATA.games, fpsState.gameId)) fpsState.gameId = DATA.games[0].id;
@@ -593,11 +709,7 @@
           return '<option value="' + l.id + '">' + esc(l.name) + ' — ' + esc(l.gpu) + ' ' + l.tgp + 'W — ' + fmt(l.price) + '</option>';
         }).join('');
         $('recoGame').innerHTML = DATA.games.map(function (g) { return '<option value="' + g.id + '">' + esc(g.name) + '</option>'; }).join('');
-        $('statsStrip').innerHTML =
-          '<div class="stat"><b>' + CATEGORIES.reduce(function (s, c) { return s + DATA[c.key].length; }, 0) + '</b><small>linh kiện PC</small></div>' +
-          '<div class="stat"><b>' + DATA.laptops.length + '</b><small>mẫu laptop gaming</small></div>' +
-          '<div class="stat"><b>' + DATA.games.length + '</b><small>game hỗ trợ check FPS</small></div>' +
-          '<div class="stat"><b>' + DATA.software.length + '+' + DATA.aiTools.length + '</b><small>phần mềm &amp; công cụ AI (sắp ra mắt)</small></div>';
+        $('statsStrip').innerHTML = statsHtml();
         renderGameGrid();
         renderSoftware();
         renderAll();
@@ -612,14 +724,10 @@
   }
 
   /* ---------- Khởi tạo ---------- */
-  function renderAll() { renderPickers(); renderSummary(); sync3D(); renderFps(); renderSoftwareBuild(); }
+  function renderAll() { renderPickers(); renderSummary(); sync3D(); renderFps(); renderSoftware(); }
 
   function init() {
-    $('statsStrip').innerHTML =
-      '<div class="stat"><b>' + CATEGORIES.reduce(function (s, c) { return s + DATA[c.key].length; }, 0) + '</b><small>linh kiện PC</small></div>' +
-      '<div class="stat"><b>' + DATA.laptops.length + '</b><small>mẫu laptop gaming</small></div>' +
-      '<div class="stat"><b>' + DATA.games.length + '</b><small>game hỗ trợ check FPS</small></div>' +
-      '<div class="stat"><b>' + DATA.software.length + '+' + DATA.aiTools.length + '</b><small>phần mềm &amp; công cụ AI (sắp ra mắt)</small></div>';
+    $('statsStrip').innerHTML = statsHtml();
 
     document.querySelectorAll('.tab-btn').forEach(function (b) { b.addEventListener('click', function () { switchTab(b.dataset.tab); }); });
     document.querySelectorAll('[data-goto]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); switchTab(a.dataset.goto); }); });

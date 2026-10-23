@@ -198,19 +198,58 @@ const RIGCHECK_DATA = {
     { id: 'starfield',   name: 'Starfield',                   baseFps: 55,  cpuWeight: 0.45, genre: 'AAA / RPG' },
   ],
 
-  /* ================= Phần mềm sáng tạo — 8 mục (khung sẵn, chưa chấm điểm) ================= */
+  /* ================= Phần mềm sáng tạo — 8 mục, chấm điểm thật theo build =================
+   * req: hồ sơ yêu cầu phần cứng của từng phần mềm.
+   *   cpuW/gpuW/ramW: trọng số 3 yếu tố (tổng = 1) khi tính điểm tổng.
+   *   minCpu/recCpu: theo thang "score" CPU của site (100 ≈ Ryzen 5 7500F).
+   *   minGpu/recGpu: theo thang "perf" GPU của site (100 ≈ RTX 4060 Ti).
+   *   minVram/recVram, minRam/recRam: GB.
+   * Nguyên tắc số liệu: bám yêu cầu hệ thống công bố của hãng (Adobe, Blackmagic,
+   * Autodesk, Blender Foundation, OBS Project) + kinh nghiệm dựng/render thực tế,
+   * quy đổi sang thang điểm của site. Điểm chỉ là ước tính theo thông số, xem app.js. */
   software: [
-    { id: 'premiere',  name: 'Adobe Premiere Pro',   category: 'Dựng video', focus: 'CPU đa nhân, GPU tăng tốc encode, RAM 32GB+' },
-    { id: 'davinci',   name: 'DaVinci Resolve',      category: 'Dựng video', focus: 'VRAM GPU là yếu tố quyết định ở hiệu ứng Fusion' },
-    { id: 'photoshop', name: 'Adobe Photoshop',       category: 'Đồ hoạ / vẽ', focus: 'CPU đơn nhân, RAM lớn cho file PSD nhiều lớp' },
-    { id: 'illustrator', name: 'Adobe Illustrator',  category: 'Đồ hoạ / vẽ', focus: 'CPU đơn nhân, ưu tiên xung nhịp cao' },
-    { id: 'afterfx',   name: 'Adobe After Effects',  category: 'Dựng video', focus: 'RAM 64GB+, CPU đa nhân cho render preview' },
-    { id: 'blender',   name: 'Blender',              category: '3D / Render', focus: 'GPU CUDA/OptiX khi render Cycles, VRAM cho scene lớn' },
-    { id: 'autocad',   name: 'AutoCAD',              category: 'Kỹ thuật / CAD', focus: 'CPU đơn nhân, GPU tầm trung là đủ' },
-    { id: 'obs',       name: 'OBS Studio',           category: 'Livestream', focus: 'GPU có NVENC để stream không giật game' },
+    { id: 'premiere',  name: 'Adobe Premiere Pro',   category: 'Dựng video', focus: 'CPU đa nhân, GPU tăng tốc encode, RAM 32GB+',
+      req: { cpuW: 0.45, gpuW: 0.30, ramW: 0.25, minCpu: 85, recCpu: 105, minGpu: 82, recGpu: 120, minVram: 4, recVram: 8, minRam: 16, recRam: 32 } },
+    { id: 'davinci',   name: 'DaVinci Resolve',      category: 'Dựng video', focus: 'VRAM GPU là yếu tố quyết định ở hiệu ứng Fusion',
+      req: { cpuW: 0.25, gpuW: 0.50, ramW: 0.25, minCpu: 85, recCpu: 100, minGpu: 100, recGpu: 150, minVram: 8, recVram: 16, minRam: 16, recRam: 32 } },
+    { id: 'photoshop', name: 'Adobe Photoshop',       category: 'Đồ hoạ / vẽ', focus: 'CPU đơn nhân, RAM lớn cho file PSD nhiều lớp',
+      req: { cpuW: 0.50, gpuW: 0.20, ramW: 0.30, minCpu: 84, recCpu: 104, minGpu: 45, recGpu: 82, minVram: 2, recVram: 4, minRam: 16, recRam: 32 } },
+    { id: 'illustrator', name: 'Adobe Illustrator',  category: 'Đồ hoạ / vẽ', focus: 'CPU đơn nhân, ưu tiên xung nhịp cao',
+      req: { cpuW: 0.60, gpuW: 0.15, ramW: 0.25, minCpu: 84, recCpu: 108, minGpu: 45, recGpu: 75, minVram: 2, recVram: 4, minRam: 16, recRam: 32 } },
+    { id: 'afterfx',   name: 'Adobe After Effects',  category: 'Dựng video', focus: 'RAM 64GB+, CPU đa nhân cho render preview',
+      req: { cpuW: 0.35, gpuW: 0.15, ramW: 0.50, minCpu: 90, recCpu: 110, minGpu: 75, recGpu: 105, minVram: 4, recVram: 8, minRam: 32, recRam: 64 } },
+    { id: 'blender',   name: 'Blender',              category: '3D / Render', focus: 'GPU CUDA/OptiX khi render Cycles, VRAM cho scene lớn',
+      req: { cpuW: 0.20, gpuW: 0.60, ramW: 0.20, minCpu: 80, recCpu: 100, minGpu: 90, recGpu: 175, minVram: 8, recVram: 16, minRam: 16, recRam: 32 } },
+    { id: 'autocad',   name: 'AutoCAD',              category: 'Kỹ thuật / CAD', focus: 'CPU đơn nhân, GPU tầm trung là đủ',
+      req: { cpuW: 0.60, gpuW: 0.20, ramW: 0.20, minCpu: 84, recCpu: 100, minGpu: 45, recGpu: 82, minVram: 2, recVram: 4, minRam: 16, recRam: 32 } },
+    { id: 'obs',       name: 'OBS Studio',           category: 'Livestream', focus: 'GPU có NVENC để stream không giật game',
+      req: { cpuW: 0.30, gpuW: 0.40, ramW: 0.30, minCpu: 72, recCpu: 90, minGpu: 45, recGpu: 82, minVram: 4, recVram: 6, minRam: 16, recRam: 16 } },
   ],
 
-  /* ================= Local AI — 4 mục (khung sẵn, chưa chấm điểm) ================= */
+  /* ================= Model AI chạy tại máy (local) — 13 model phổ biến =================
+   * vram: GB VRAM cần cho từng mức lượng tử hoá, ĐÃ gồm overhead hợp lý
+   * (KV cache / context vừa, buffer runtime ~1–2GB).
+   *   LLM: FP16 ≈ số tỉ tham số × 2GB, Q8 ≈ × 1,05GB, Q4 ≈ × 0,6GB (GGUF Q4_K_M).
+   *   Ảnh: FP16 là bản gốc; với FLUX, "q8" tương ứng bản FP8 và "q4" là bản
+   *   lượng tử GGUF Q4 / NF4. q4 = null nghĩa là không có bản lượng tử phổ biến.
+   * runner: phần mềm thường dùng để chạy model đó trên máy cá nhân. */
+  aiModels: [
+    { id: 'phi-3.5-mini',      name: 'Phi-3.5 Mini',        kind: 'LLM', params: '3.8B', vram: { fp16: 9,    q8: 5,    q4: 3.5  }, runner: 'Ollama / LM Studio', note: 'Model nhỏ của Microsoft, nhanh, hợp máy yếu và tác vụ phụ trợ.' },
+    { id: 'mistral-7b',        name: 'Mistral 7B',          kind: 'LLM', params: '7B',   vram: { fp16: 15.5, q8: 8.5,  q4: 5.5  }, runner: 'Ollama / LM Studio', note: 'Gọn, phản hồi nhanh, tiếng Anh tốt; bản Instruct hợp chat phổ thông.' },
+    { id: 'qwen2.5-7b',        name: 'Qwen2.5 7B',          kind: 'LLM', params: '7B',   vram: { fp16: 15.5, q8: 8.5,  q4: 5.5  }, runner: 'Ollama / LM Studio', note: 'Đa ngôn ngữ tốt (có tiếng Việt), cân bằng tốc độ / chất lượng ở cỡ 7B.' },
+    { id: 'llama-3.1-8b',      name: 'Llama 3.1 8B',        kind: 'LLM', params: '8B',   vram: { fp16: 17.5, q8: 9.5,  q4: 6.5  }, runner: 'Ollama / LM Studio', note: 'Model phổ thông nhất của Meta, hệ sinh thái fine-tune / GGUF rất lớn.' },
+    { id: 'gemma-2-9b',        name: 'Gemma 2 9B',          kind: 'LLM', params: '9B',   vram: { fp16: 19.5, q8: 10.5, q4: 6.5  }, runner: 'Ollama / LM Studio', note: 'Của Google, chất lượng trả lời cao so với kích thước 9B.' },
+    { id: 'qwen2.5-14b',       name: 'Qwen2.5 14B',         kind: 'LLM', params: '14B',  vram: { fp16: 29.5, q8: 16,   q4: 10   }, runner: 'Ollama / LM Studio', note: 'Bước nhảy chất lượng rõ rệt so với 7B, vẫn vừa GPU 12GB ở Q4.' },
+    { id: 'gemma-2-27b',       name: 'Gemma 2 27B',         kind: 'LLM', params: '27B',  vram: { fp16: 55.5, q8: 29.5, q4: 17.5 }, runner: 'Ollama / LM Studio', note: '27B của Google, mạnh về suy luận và viết lách, cần VRAM khá.' },
+    { id: 'qwen2.5-32b',       name: 'Qwen2.5 32B',         kind: 'LLM', params: '32B',  vram: { fp16: 65.5, q8: 35,   q4: 21   }, runner: 'Ollama / LM Studio', note: 'Cỡ 32B đa ngôn ngữ mạnh, Q4 là lựa chọn thực tế cho GPU 24GB.' },
+    { id: 'qwen2.5-coder-32b', name: 'Qwen2.5-Coder 32B',   kind: 'LLM', params: '32B',  vram: { fp16: 65.5, q8: 35,   q4: 21   }, runner: 'Ollama / LM Studio', note: 'Chuyên lập trình, thuộc nhóm code model chạy local tốt nhất hiện nay.' },
+    { id: 'llama-3.1-70b',     name: 'Llama 3.1 70B',       kind: 'LLM', params: '70B',  vram: { fp16: 141.5, q8: 75,  q4: 43.5 }, runner: 'Ollama / LM Studio', note: 'Cỡ lớn tiệm cận model đám mây; Q4 vẫn cần ~43GB — vượt mọi GPU đơn lẻ phổ thông.' },
+    { id: 'sd-1.5',            name: 'Stable Diffusion 1.5', kind: 'Ảnh', params: '0.9B', vram: { fp16: 6,   q8: 4,    q4: null }, runner: 'ComfyUI / A1111',    note: 'Nhẹ và nhanh, kho LoRA / checkpoint khổng lồ, chạy được trên GPU 4–6GB.' },
+    { id: 'sdxl',              name: 'SDXL',                kind: 'Ảnh', params: '2.6B', vram: { fp16: 12,  q8: 8,    q4: null }, runner: 'ComfyUI / A1111',    note: 'Chuẩn tạo ảnh phổ biến hiện nay, ảnh gốc 1024px, cần ~8–12GB VRAM.' },
+    { id: 'flux.1-dev',        name: 'FLUX.1 dev',          kind: 'Ảnh', params: '12B',  vram: { fp16: 24,  q8: 16,   q4: 12   }, runner: 'ComfyUI / A1111',    note: 'Chất lượng ảnh rất cao (văn bản trong ảnh tốt); bản FP8 ~16GB, bản GGUF Q4 ~12GB.' },
+  ],
+
+  /* ================= Local AI (công cụ cũ) — giữ cho bảng ai_tools trên DB, tab web không còn dùng ================= */
   aiTools: [
     { id: 'ollama',    name: 'Ollama',               category: 'LLM tại nhà', focus: 'VRAM quyết định cỡ model: 8GB ≈ 7B, 16GB ≈ 14B, 24GB+ ≈ 32B (Q4)' },
     { id: 'lmstudio',  name: 'LM Studio',            category: 'LLM tại nhà', focus: 'Chạy model GGUF, cần RAM hệ thống + VRAM cân đối' },

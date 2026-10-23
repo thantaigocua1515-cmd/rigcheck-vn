@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RigCheck VN — Build PC, Kiểm Tra Tương Thích, Xem FPS Game & Gợi Ý Cấu Hình</title>
-<meta name="description" content="RigCheck VN giúp bạn build PC và chọn laptop: kiểm tra tương thích linh kiện theo thời gian thực, xem FPS game theo cấu hình (tối thiểu / trung bình / tối đa), gợi ý cấu hình theo từng game, ngân sách và nhu cầu đồ hoạ, dựng video, local AI.">
-<meta name="keywords" content="build PC, xây dựng cấu hình PC, kiểm tra tương thích linh kiện, xem FPS game, gợi ý cấu hình chơi game, build PC đồ hoạ, dựng video, local AI, laptop gaming">
+<meta name="description" content="RigCheck VN giúp bạn build PC và chọn laptop: kiểm tra tương thích linh kiện theo thời gian thực, xem FPS game theo cấu hình (tối thiểu / trung bình / tối đa), gợi ý cấu hình theo từng game, ngân sách, chấm điểm build cho phần mềm đồ hoạ / dựng video và kiểm tra model AI chạy local theo VRAM.">
+<meta name="keywords" content="build PC, xây dựng cấu hình PC, kiểm tra tương thích linh kiện, xem FPS game, gợi ý cấu hình chơi game, build PC đồ hoạ, dựng video, model AI, chạy LLM tại nhà, laptop gaming">
 <link rel="canonical" href="https://rigcheck-vn.vercel.app/">
 <meta name="robots" content="index, follow">
 
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="RigCheck VN">
 <meta property="og:title" content="RigCheck VN — Build PC, Kiểm Tra Tương Thích & Xem FPS Game">
-<meta property="og:description" content="Chọn linh kiện, kiểm tra tương thích, xem FPS từng game và nhận gợi ý cấu hình PC / laptop theo ngân sách. Có sẵn khung cho đồ hoạ, dựng video và local AI.">
+<meta property="og:description" content="Chọn linh kiện, kiểm tra tương thích, xem FPS từng game và nhận gợi ý cấu hình PC / laptop theo ngân sách. Chấm điểm build cho phần mềm đồ hoạ, dựng video và kiểm tra model AI chạy local theo VRAM.">
 <meta property="og:url" content="https://rigcheck-vn.vercel.app/">
 <meta property="og:locale" content="vi_VN">
 
@@ -48,8 +48,8 @@
       "mainEntity": [
         { "@type": "Question", "name": "RTX 4060 chơi Cyberpunk 2077 được bao nhiêu FPS?", "acceptedAnswer": { "@type": "Answer", "text": "Ở 1080p High, RTX 4060 đi cùng CPU tầm trung như Ryzen 5 7500F cho khoảng 55–70 FPS trung bình; bật DLSS Quality có thể lên khoảng 85–95 FPS. Đây là số ước tính nội suy từ benchmark, xem chi tiết trong tab Check FPS của RigCheck VN." } },
         { "@type": "Question", "name": "Nguồn 550W có đủ cho RTX 4070 không?", "acceptedAnswer": { "@type": "Answer", "text": "RTX 4070 có TDP 200W; đi cùng CPU 65–125W thì tổng tải khoảng 400W. Nguồn 550W chất lượng tốt chạy được, nhưng RigCheck VN khuyên dùng 650–750W để có dư địa nâng cấp và độ ồn thấp." } },
-        { "@type": "Question", "name": "Chạy local AI (LLM tại nhà) cần bao nhiêu VRAM?", "acceptedAnswer": { "@type": "Answer", "text": "VRAM quyết định cỡ model chạy được: khoảng 8GB VRAM cho model 7B lượng tử hoá Q4, 16GB cho 14B, 24GB trở lên cho 32B. GPU NVIDIA có lợi thế nhờ CUDA và hệ sinh thái Ollama, LM Studio, ComfyUI." } },
-        { "@type": "Question", "name": "Build PC dựng video Premiere Pro và DaVinci Resolve cần cấu hình gì?", "acceptedAnswer": { "@type": "Answer", "text": "Dựng video nên ưu tiên CPU nhiều nhân, RAM 32GB trở lên và GPU có VRAM lớn (DaVinci Resolve phụ thuộc nhiều vào VRAM). Mục Phần mềm & Local AI của RigCheck VN đang xây dựng phần đề xuất cấu hình chi tiết cho từng phần mềm." } },
+        { "@type": "Question", "name": "Chạy model AI tại nhà (LLM local) cần bao nhiêu VRAM?", "acceptedAnswer": { "@type": "Answer", "text": "VRAM quyết định cỡ model chạy được: khoảng 8GB VRAM cho model 7B lượng tử hoá Q4, 16GB cho 14B, 24GB trở lên cho 32B. Mục Model AI của RigCheck VN kiểm tra từng model cụ thể (Llama 3.1, Qwen2.5, Gemma 2, Stable Diffusion, FLUX.1) với chính GPU bạn đang chọn, ở cả ba mức FP16 / Q8 / Q4." } },
+        { "@type": "Question", "name": "Build PC dựng video Premiere Pro và DaVinci Resolve cần cấu hình gì?", "acceptedAnswer": { "@type": "Answer", "text": "Dựng video nên ưu tiên CPU nhiều nhân, RAM 32GB trở lên và GPU có VRAM lớn (DaVinci Resolve phụ thuộc nhiều vào VRAM). Mục Phần mềm & Model AI của RigCheck VN chấm điểm mức phù hợp của build hiện tại cho từng phần mềm và gợi ý món nâng cấp rẻ nhất khi chưa đạt." } },
         { "@type": "Question", "name": "Làm sao biết linh kiện PC có tương thích với nhau?", "acceptedAnswer": { "@type": "Answer", "text": "Cần khớp socket CPU với mainboard, đúng loại RAM DDR4/DDR5, GPU và tản nhiệt vừa kích thước case, và nguồn đủ công suất. RigCheck VN kiểm tra tự động tất cả các điều kiện này ngay khi bạn chọn linh kiện ở tab Build PC." } }
       ]
     }
@@ -85,7 +85,7 @@
     <h1>Build PC, kiểm tra tương thích và xem FPS game theo cấu hình của bạn</h1>
     <p>RigCheck VN giúp bạn chọn linh kiện PC hoặc laptop, kiểm tra độ tương thích ngay khi chọn,
        ước tính FPS tối thiểu / trung bình / tối đa cho từng game, và nhận gợi ý cấu hình theo
-       game, ngân sách, nhu cầu đồ hoạ, dựng video và local AI.</p>
+       game, ngân sách, nhu cầu đồ hoạ, dựng video và model AI chạy ngay trên máy.</p>
     <div class="stats-strip" id="statsStrip" aria-label="Quy mô dữ liệu"></div>
   </section>
 
@@ -93,7 +93,7 @@
     <button class="tab-btn active" data-tab="build" type="button">🖥️ Build PC 3D</button>
     <button class="tab-btn" data-tab="fps" type="button">🎮 Check FPS</button>
     <button class="tab-btn" data-tab="reco" type="button">🎯 Gợi ý theo game</button>
-    <button class="tab-btn" data-tab="software" type="button">🎬 Phần mềm &amp; Local AI <span class="badge">Sắp ra mắt</span></button>
+    <button class="tab-btn" data-tab="software" type="button">🎬 Phần mềm &amp; Model AI</button>
   </nav>
 
   <!-- ============ TAB 1: BUILD PC ============ -->
@@ -186,17 +186,17 @@
     <div class="grid-3" id="recoResult"></div>
   </section>
 
-  <!-- ============ TAB 4: PHẦN MỀM & LOCAL AI ============ -->
-  <section class="tab-panel" id="panel-software" aria-label="Phần mềm và Local AI">
-    <div class="soon-banner">🚧 Mục này đang được xây dựng — khung giao diện và cấu trúc dữ liệu đã sẵn sàng. Phần chấm mức phù hợp &amp; đề xuất cấu hình cho từng phần mềm / công cụ AI sẽ cập nhật trong phiên bản tới, không dùng số liệu bịa.</div>
+  <!-- ============ TAB 4: PHẦN MỀM & MODEL AI ============ -->
+  <section class="tab-panel" id="panel-software" aria-label="Phần mềm và Model AI">
     <div class="card" style="margin-bottom:16px">
       <h3 style="margin-top:0">Build hiện tại của bạn (dùng chung cho mục này)</h3>
       <div id="softwareBuildSummary" class="small"></div>
     </div>
     <h3>Phần mềm sáng tạo — dựng video, đồ hoạ, 3D</h3>
     <div class="sw-grid" id="softwareGrid"></div>
-    <h3 style="margin-top:22px">Local AI — chạy mô hình AI ngay trên máy của bạn</h3>
+    <h3 style="margin-top:22px">Model AI — chạy mô hình AI ngay trên máy của bạn</h3>
     <div class="sw-grid" id="aiGrid"></div>
+    <p class="small muted" style="margin-top:14px">⚠️ Điểm phần mềm và tốc độ token/s là <strong>ước tính theo thông số phần cứng</strong> (điểm hiệu năng CPU/GPU, VRAM, RAM) kết hợp yêu cầu hệ thống công bố của từng hãng — không phải benchmark đo trực tiếp trên máy thật. Model LLM thiếu VRAM vẫn có thể chạy bằng cách mượn RAM hệ thống (offload) nhưng chậm hơn đáng kể; model ảnh thì cần đủ VRAM.</p>
   </section>
 
   <!-- ============ NỘI DUNG SEO ============ -->
@@ -218,20 +218,20 @@
 
     <section class="card">
       <h2>Build PC cho đồ hoạ và dựng video</h2>
-      <p>Máy dựng video Premiere Pro, DaVinci Resolve hay làm 3D với Blender có ưu tiên khác hẳn máy chơi game: CPU nhiều nhân, RAM 32–64GB, GPU VRAM lớn và SSD NVMe tốc độ cao quan trọng hơn FPS. RigCheck VN đã chừa sẵn mục <a href="#panel-software" data-goto="software">Phần mềm &amp; Local AI</a> để đề xuất cấu hình theo từng phần mềm trong bản cập nhật tới.</p>
+      <p>Máy dựng video Premiere Pro, DaVinci Resolve hay làm 3D với Blender có ưu tiên khác hẳn máy chơi game: CPU nhiều nhân, RAM 32–64GB, GPU VRAM lớn và SSD NVMe tốc độ cao quan trọng hơn FPS. Mục <a href="#panel-software" data-goto="software">Phần mềm &amp; Model AI</a> của RigCheck VN chấm điểm mức phù hợp của chính cấu hình bạn đang build cho từng phần mềm và gợi ý món nâng cấp rẻ nhất khi điểm chưa đạt.</p>
     </section>
 
     <section class="card">
-      <h2>Build PC chạy local AI cần gì?</h2>
-      <p>Chạy LLM tại nhà bằng Ollama hay LM Studio và tạo ảnh bằng ComfyUI / Stable Diffusion đều bị giới hạn chủ yếu bởi <strong>VRAM của GPU</strong>: khoảng 8GB cho model 7B, 16GB cho 14B và 24GB trở lên cho 32B (lượng tử hoá Q4). Khi chọn GPU ở <a href="#panel-build" data-goto="build">tab Build</a>, hãy chú ý dung lượng VRAM thay vì chỉ nhìn hiệu năng chơi game.</p>
+      <h2>Build PC chạy model AI tại máy (local) cần gì?</h2>
+      <p>Chạy LLM tại nhà bằng Ollama hay LM Studio và tạo ảnh bằng ComfyUI / Stable Diffusion đều bị giới hạn chủ yếu bởi <strong>VRAM của GPU</strong>: khoảng 8GB cho model 7B, 16GB cho 14B và 24GB trở lên cho 32B (lượng tử hoá Q4). Khi chọn GPU ở <a href="#panel-build" data-goto="build">tab Build</a>, hãy chú ý dung lượng VRAM thay vì chỉ nhìn hiệu năng chơi game — rồi sang mục <a href="#panel-software" data-goto="software">Model AI</a> để kiểm tra từng model cụ thể (Llama 3.1, Qwen2.5, Gemma 2, FLUX.1…) ở từng mức FP16 / Q8 / Q4 với chính GPU đó.</p>
     </section>
 
     <section class="card faq">
       <h2>Câu hỏi thường gặp</h2>
       <details><summary>RTX 4060 chơi Cyberpunk 2077 được bao nhiêu FPS?</summary><p>Ở 1080p High, RTX 4060 cùng CPU tầm trung như Ryzen 5 7500F cho khoảng 55–70 FPS trung bình; bật DLSS Quality có thể lên khoảng 85–95 FPS. Đây là số ước tính nội suy từ benchmark — kiểm tra với cấu hình của bạn ở tab Check FPS.</p></details>
       <details><summary>Nguồn 550W có đủ cho RTX 4070 không?</summary><p>RTX 4070 có TDP 200W; cùng CPU 65–125W thì tổng tải khoảng 400W nên nguồn 550W tốt vẫn chạy được. Tuy nhiên nên chọn 650–750W để dư địa nâng cấp và vận hành êm hơn — công cụ build sẽ tự cảnh báo nếu nguồn thiếu.</p></details>
-      <details><summary>Chạy local AI (LLM tại nhà) cần bao nhiêu VRAM?</summary><p>Khoảng 8GB VRAM cho model 7B Q4, 16GB cho 14B, 24GB+ cho 32B. GPU NVIDIA có lợi thế CUDA với Ollama, LM Studio và ComfyUI.</p></details>
-      <details><summary>Build PC dựng video Premiere Pro và DaVinci Resolve cần cấu hình gì?</summary><p>Ưu tiên CPU nhiều nhân, RAM 32GB trở lên, GPU VRAM lớn (đặc biệt với DaVinci Resolve) và SSD NVMe nhanh cho cache/media. Mục Phần mềm &amp; Local AI sẽ có đề xuất chi tiết theo từng phần mềm.</p></details>
+      <details><summary>Chạy model AI tại nhà (LLM local) cần bao nhiêu VRAM?</summary><p>Khoảng 8GB VRAM cho model 7B Q4, 16GB cho 14B, 24GB+ cho 32B. GPU NVIDIA có lợi thế CUDA với Ollama, LM Studio và ComfyUI. Mục Model AI kiểm tra sẵn từng model theo GPU bạn đang chọn.</p></details>
+      <details><summary>Build PC dựng video Premiere Pro và DaVinci Resolve cần cấu hình gì?</summary><p>Ưu tiên CPU nhiều nhân, RAM 32GB trở lên, GPU VRAM lớn (đặc biệt với DaVinci Resolve) và SSD NVMe nhanh cho cache/media. Mục Phần mềm &amp; Model AI chấm điểm build của bạn cho từng phần mềm và gợi ý nâng cấp cụ thể.</p></details>
       <details><summary>Làm sao biết linh kiện PC có tương thích với nhau?</summary><p>Kiểm tra socket CPU–main, loại RAM DDR4/DDR5, kích thước GPU/tản so với case và công suất nguồn. RigCheck VN tự động kiểm tra tất cả ngay khi bạn chọn linh kiện.</p></details>
     </section>
   </div>
@@ -239,9 +239,9 @@
 
 <footer class="site-footer">
   <div class="wrap">
-    <p><strong>RigCheck VN</strong> — Build PC, kiểm tra tương thích, xem FPS game, gợi ý cấu hình theo game, đồ hoạ, dựng video và local AI.</p>
+    <p><strong>RigCheck VN</strong> — Build PC, kiểm tra tương thích, xem FPS game, gợi ý cấu hình theo game, đồ hoạ, dựng video và model AI.</p>
     <p id="priceNote">Giá linh kiện và laptop là giá tham khảo đối chiếu niêm yết online tại các shop linh kiện VN, thời điểm 10/2026 — không phải giá bán của RigCheck VN. FPS là ước tính nội suy từ benchmark tham chiếu.</p>
-    <p>Điều hướng: <a href="#panel-build" data-goto="build">Build PC</a> · <a href="#panel-fps" data-goto="fps">Check FPS</a> · <a href="#panel-reco" data-goto="reco">Gợi ý theo game</a> · <a href="#panel-software" data-goto="software">Phần mềm &amp; Local AI</a></p>
+    <p>Điều hướng: <a href="#panel-build" data-goto="build">Build PC</a> · <a href="#panel-fps" data-goto="fps">Check FPS</a> · <a href="#panel-reco" data-goto="reco">Gợi ý theo game</a> · <a href="#panel-software" data-goto="software">Phần mềm &amp; Model AI</a></p>
   </div>
 </footer>
 

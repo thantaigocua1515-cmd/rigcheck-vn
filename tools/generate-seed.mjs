@@ -83,11 +83,12 @@ for (const g of DATA.games) {
 }
 lines.push('');
 
-// ---- software_apps / ai_tools: chỉ nạp khung, trường chấm điểm để trống ----
+// ---- software_apps: kèm hồ sơ req (cột req có từ bản cập nhật Model AI; DB cũ cần
+// chạy update-software-model-ai.sql hoặc schema.sql mới trước khi seed lại) ----
 for (const s of DATA.software) {
   lines.push(
-    `insert into public.software_apps (slug, name, category, focus, updated_at) values (` +
-    `${q(s.id)}, ${q(s.name)}, ${q(s.category)}, ${q(s.focus)}, ${q(TS)}) on conflict (slug) do nothing;`
+    `insert into public.software_apps (slug, name, category, focus, req, updated_at) values (` +
+    `${q(s.id)}, ${q(s.name)}, ${q(s.category)}, ${q(s.focus)}, ${s.req ? json(s.req) : 'null'}, ${q(TS)}) on conflict (slug) do nothing;`
   );
 }
 lines.push('');
@@ -99,7 +100,16 @@ for (const s of DATA.aiTools) {
 }
 lines.push('');
 
+// ---- ai_models: danh sách model AI chạy local (tab Phần mềm & Model AI) ----
+for (const m of DATA.aiModels || []) {
+  lines.push(
+    `insert into public.ai_models (slug, name, kind, params, vram, runner, note, updated_at) values (` +
+    `${q(m.id)}, ${q(m.name)}, ${q(m.kind)}, ${q(m.params)}, ${json(m.vram)}, ${q(m.runner)}, ${q(m.note)}, ${q(TS)}) on conflict (slug) do nothing;`
+  );
+}
+lines.push('');
+
 const out = join(root, 'supabase', 'seed.sql');
 writeFileSync(out, lines.join('\n'), 'utf8');
 console.log(`Đã sinh ${out}`);
-console.log(`components=${compCount} laptops=${DATA.laptops.length} games=${DATA.games.length} fps_benchmarks=${benchCount} software=${DATA.software.length} ai_tools=${DATA.aiTools.length}`);
+console.log(`components=${compCount} laptops=${DATA.laptops.length} games=${DATA.games.length} fps_benchmarks=${benchCount} software=${DATA.software.length} ai_tools=${DATA.aiTools.length} ai_models=${(DATA.aiModels || []).length}`);

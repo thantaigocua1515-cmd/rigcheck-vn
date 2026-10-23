@@ -66,20 +66,36 @@ create table if not exists public.fps_benchmarks (
   unique (game_slug, gpu_slug, cpu_slug, resolution, setting)
 );
 
--- ---------- Bảng phần mềm sáng tạo (mục sắp ra mắt) ----------
+-- ---------- Bảng phần mềm sáng tạo ----------
 create table if not exists public.software_apps (
   id            bigint generated always as identity primary key,
   slug          text not null unique,
   name          text not null,
   category      text,
   focus         text,                      -- yếu tố phần cứng quan trọng nhất
-  fit_level     text,                      -- mức phù hợp (để trống khi chưa chấm)
+  req           jsonb,                     -- hồ sơ yêu cầu {cpuW,gpuW,ramW,minCpu,recCpu,minGpu,recGpu,minVram,recVram,minRam,recRam}
+  fit_level     text,                      -- (cũ, không còn dùng — điểm được tính trực tiếp trên web theo req)
   vram_ram_note text,
-  recommended   text,                      -- cấu hình đề xuất (để trống khi chưa có)
+  recommended   text,
   updated_at    timestamptz not null default now()
 );
+-- DB tạo từ schema cũ chưa có cột req:
+alter table public.software_apps add column if not exists req jsonb;
 
--- ---------- Bảng công cụ Local AI (mục sắp ra mắt) ----------
+-- ---------- Bảng Model AI chạy local ----------
+create table if not exists public.ai_models (
+  id          bigint generated always as identity primary key,
+  slug        text not null unique,
+  name        text not null,
+  kind        text,                        -- LLM | Ảnh
+  params      text,                        -- cỡ model hiển thị, vd '8B', '70B'
+  vram        jsonb not null default '{}'::jsonb, -- GB VRAM cần theo mức {fp16, q8, q4}; null = không áp dụng
+  runner      text,                        -- phần mềm chạy model, vd 'Ollama / LM Studio'
+  note        text,
+  updated_at  timestamptz not null default now()
+);
+
+-- ---------- Bảng công cụ Local AI (cũ — giữ lại, tab web đã chuyển sang ai_models) ----------
 create table if not exists public.ai_tools (
   id            bigint generated always as identity primary key,
   slug          text not null unique,
@@ -103,6 +119,7 @@ alter table public.games          enable row level security;
 alter table public.fps_benchmarks enable row level security;
 alter table public.software_apps enable row level security;
 alter table public.ai_tools       enable row level security;
+alter table public.ai_models      enable row level security;
 
 drop policy if exists "public read" on public.components;
 drop policy if exists "public read" on public.laptops;
@@ -110,6 +127,7 @@ drop policy if exists "public read" on public.games;
 drop policy if exists "public read" on public.fps_benchmarks;
 drop policy if exists "public read" on public.software_apps;
 drop policy if exists "public read" on public.ai_tools;
+drop policy if exists "public read" on public.ai_models;
 
 create policy "public read" on public.components     for select to anon, authenticated using (true);
 create policy "public read" on public.laptops        for select to anon, authenticated using (true);
@@ -117,6 +135,7 @@ create policy "public read" on public.games          for select to anon, authent
 create policy "public read" on public.fps_benchmarks for select to anon, authenticated using (true);
 create policy "public read" on public.software_apps for select to anon, authenticated using (true);
 create policy "public read" on public.ai_tools       for select to anon, authenticated using (true);
+create policy "public read" on public.ai_models      for select to anon, authenticated using (true);
 
 -- Chỉ mục hỗ trợ truy vấn phía app
 create index if not exists idx_components_category on public.components (category);
