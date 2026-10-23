@@ -92,6 +92,15 @@ h3{font-size:16px;margin:0 0 8px}
 .viewer3d .reset-view{position:absolute;right:12px;top:10px;font-size:12.5px;font-weight:600;
   padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);cursor:pointer}
 .viewer3d .reset-view:hover{border-color:var(--accent);color:var(--accent)}
+.viewer3d .hl-label{position:absolute;left:12px;top:10px;z-index:3;max-width:78%;font-size:12.5px;
+  background:#fff;border:1px solid var(--accent);border-radius:999px;padding:5px 12px;box-shadow:var(--shadow)}
+.viewer3d .hl-label strong{color:var(--accent)}
+.viewer3d .glb-tip{position:absolute;z-index:4;pointer-events:none;font-size:12.5px;max-width:280px;
+  background:rgba(15,23,42,.92);color:#fff;border-radius:8px;padding:6px 10px;box-shadow:var(--shadow)}
+
+/* Tương tác 3D ↔ danh sách: flash thẻ picker khi bấm vào linh kiện trên khung 3D */
+.part-row{transition:background .25s ease,box-shadow .25s ease}
+.part-row.flash{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent);border-radius:10px}
 
 /* FPS */
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}

@@ -148,6 +148,18 @@
   var glb = null;        // trạng thái renderer GLB (three module 0.160)
   var viewMode = 'none'; // 'glb' | 'box' | 'none'
 
+  /* ----- Tương tác hai chiều danh sách ↔ 3D (chỉ ở chế độ GLB) -----
+   * interact.pickerCat: category đang được highlight từ phía picker (focus/change).
+   * interact.hoverCat: category đang được hover bằng raycast trên canvas.
+   * Emissive được áp DUY NHẤT tại applyEmissiveState() theo ưu tiên:
+   *   lỗi tương thích (đỏ) > highlight tương tác (xanh) > emissive gốc. */
+  var interact = { pickerCat: null, hoverCat: null, timer: null };
+  var GROUP_TO_CAT = {
+    CASE: 'cases', BOARD: 'mainboards', GPU_STD: 'gpus', GPU_LONG: 'gpus',
+    COOLER_AIO: 'coolers', COOLER_AIR: 'coolers', RADIATOR: 'coolers', PSU: 'psus',
+    RAM_1: 'rams', RAM_2: 'rams', RAM_3: 'rams', RAM_4: 'rams',
+  };
+
   function sync3D() {
     if (viewMode === 'glb') syncGLB();
     else if (viewMode === 'box') drawPC();
@@ -187,9 +199,9 @@
       controls.minDistance = 5; controls.maxDistance = 16;
       controls.maxPolarAngle = Math.PI * 0.62;
       controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
-      controls.addEventListener('start', function () { controls.autoRotate = false; });
+      controls.addEventListener('start', function () { controls.autoRotate = false; if (glb) glb.autoWanted = false; });
       controls.update(); controls.saveState();
-      glb = { THREE: THREE, renderer: renderer, scene: scene, camera: camera, controls: controls, groups: {}, groupMats: {}, caseMats: [], ready: false };
+      glb = { THREE: THREE, renderer: renderer, scene: scene, camera: camera, controls: controls, groups: {}, groupMats: {}, caseMats: [], ready: false, autoWanted: true };
       var loader = new GLTFLoader();
       // Nguồn GLB: ưu tiên file local (khi chạy local / bản deploy đầy đủ), sau đó tới CDN
       // jsDelivr trỏ đúng commit GitHub chứa model (Vercel không nhận file >100KB qua kênh deploy hiện tại).
@@ -219,6 +231,7 @@
         viewMode = 'glb'; glb.ready = true;
         (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
         syncGLB();
+        setupGLBInteract(renderer.domElement);
         return true;
       });
     }).catch(function () { glb = null; return false; });
@@ -280,11 +293,257 @@
     return true;
   }
 
-  function setGroupGlow(name, on) {
-    (glb.groupMats[name] || []).forEach(function (rec) {
-      if (!rec.mat.emissive) return;
-      if (on) { rec.mat.emissive.setHex(0xff2418); rec.mat.emissiveIntensity = 0.9; }
-      else { rec.mat.emissive.setHex(rec.emissive); rec.mat.emissiveIntensity = rec.emissiveIntensity; }
+  /* ----- Ánh xạ category ↔ nhóm GLB (theo lựa chọn hiện tại) ----- */
+  function coolerGroupName() { var c = part('coolers'); return c && c.type === 'air' ? 'COOLER_AIR' : 'COOLER_AIO'; }
+  function gpuGroupName() { var g = part('gpus'); return g && g.length > 270 ? 'GPU_LONG' : 'GPU_STD'; }
+  function groupsForCat(cat) {
+    switch (cat) {
+      case 'cpus': case 'coolers': return [coolerGroupName()]; // CPU nằm dưới tản — highlight khối tản đang hiện
+      case 'gpus': return [gpuGroupName()];
+      case 'mainboards': case 'ssds': return ['BOARD'];        // SSD gắn trên mainboard, chưa có hình riêng
+      case 'rams': return ['RAM_1', 'RAM_2', 'RAM_3', 'RAM_4'];
+      case 'cases': return ['CASE'];
+      case 'psus': return ['PSU'];
+    }
+    return [];
+  }
+  function catLabel(cat) {
+    for (var i = 0; i < CATEGORIES.length; i++) if (CATEGORIES[i].key === cat) return CATEGORIES[i].label;
+    return cat;
+  }
+
+  /* Áp emissive cho mọi nhóm — ĐIỂM ÁP DUY NHẤT.
+   * Ưu tiên: nhóm lỗi tương thích (glb.errSet do syncGLB tính) phát đỏ >
+   * highlight tương tác (xanh 0x2563eb; hover nhẹ hơn picker) > emissive gốc đã lưu. */
+  function applyEmissiveState() {
+    if (!glb || !glb.ready) return;
+    var err = glb.errSet || {};
+    var hlCat = interact.hoverCat || interact.pickerCat;
+    var hl = {};
+    if (hlCat) {
+      var strength = interact.hoverCat ? 0.32 : 0.55;
+      groupsForCat(hlCat).forEach(function (n) { hl[n] = strength; });
+    }
+    var applied = {};
+    Object.keys(glb.groupMats).forEach(function (n) {
+      var mode = err[n] ? 'err' : (hl[n] != null ? 'hl' : 'base');
+      applied[n] = mode;
+      (glb.groupMats[n] || []).forEach(function (rec) {
+        if (!rec.mat.emissive) return;
+        if (mode === 'err') { rec.mat.emissive.setHex(0xff2418); rec.mat.emissiveIntensity = 0.9; }
+        else if (mode === 'hl') { rec.mat.emissive.setHex(0x2563eb); rec.mat.emissiveIntensity = hl[n]; }
+        else { rec.mat.emissive.setHex(rec.emissive); rec.mat.emissiveIntensity = rec.emissiveIntensity; }
+      });
+    });
+    glb.hlSet = hl;
+    // Hook trạng thái phục vụ kiểm chứng tự động (chỉ đọc)
+    window.__rcHl = {
+      pickerCat: interact.pickerCat, hoverCat: interact.hoverCat,
+      hlGroups: Object.keys(hl), errGroups: Object.keys(err).filter(function (k) { return err[k]; }),
+      applied: applied,
+    };
+  }
+
+  /* ----- Chiều danh sách → 3D: nhãn nổi + highlight theo picker ----- */
+  function showHlLabel(cat) {
+    var el = $('hlLabel');
+    if (!el) return;
+    if (!cat || viewMode !== 'glb' || !glb || !glb.ready) { el.hidden = true; el.textContent = ''; return; }
+    var p = part(cat);
+    el.innerHTML = '<strong>' + esc(catLabel(cat)) + '</strong>: ' + esc(p ? p.name : '—') +
+      (p ? ' — ' + fmt(p.price) : '') +
+      (cat === 'ssds' ? ' <span class="muted">(SSD gắn trên mainboard)</span>' : '');
+    el.hidden = false;
+  }
+  function armHlTimer() {
+    if (interact.timer) clearTimeout(interact.timer);
+    interact.timer = setTimeout(function () {
+      interact.pickerCat = null;
+      showHlLabel(null);
+      applyEmissiveState();
+    }, 2500);
+  }
+  function setPickerHighlight(cat) {
+    if (viewMode !== 'glb' || !glb || !glb.ready) return;
+    interact.pickerCat = cat;
+    showHlLabel(cat);
+    applyEmissiveState();
+    armHlTimer();
+  }
+
+  /* ----- Chiều 3D → danh sách: bấm trúng nhóm thì mở picker tương ứng ----- */
+  function activatePicker(cat) {
+    var sel = document.querySelector('#partPickers select[data-cat="' + cat + '"]');
+    if (!sel) return;
+    var row = sel.closest ? sel.closest('.part-row') : null;
+    setPickerHighlight(cat);
+    if (row) {
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.classList.add('flash');
+      setTimeout(function () { row.classList.remove('flash'); }, 1200);
+    }
+    setTimeout(function () { try { sel.focus({ preventScroll: true }); } catch (e) { sel.focus(); } }, 380);
+  }
+
+  /* Hit-test + hover tooltip + click trên canvas GLB.
+   * - Vùng bấm = bounding box (Box3) của từng nhóm đang hiển thị, KHÔNG raycast từng mesh:
+   *   card GPU mỏng nằm ngang và thanh RAM mảnh rất khó trúng tia mesh, còn BOARD thì bị
+   *   khay case che — box cho vùng bấm rộng và ổn định hơn hẳn, nhất là trên cảm ứng.
+   * - Box được nới mỗi phía: 10% kích thước của chính chiều đó, nhưng tối thiểu HIT_MIN_PAD
+   *   (đệm tuyệt đối cho các chiều quá mỏng như bề dày GPU/RAM).
+   * - Tia trúng nhiều box → thắng box THỂ TÍCH NHỎ NHẤT (nhóm nhỏ/nested thắng nhóm lớn bao ngoài).
+   * - CASE không có box: chỉ khi không trúng box nào mới raycast mesh thật của CASE (fallback cuối).
+   * - Box cache trong glb.hitBoxes; syncGLB xoá cache (gán null) mỗi lần đổi hiển thị/scale,
+   *   lần hit-test đầu tiên sau đó mới tính lại (kèm updateMatrixWorld) — rẻ và luôn đúng.
+   * - pointermove được throttle bằng requestAnimationFrame, không hit-test mỗi frame render.
+   * - Click = pointerup lệch < 6px và < 400ms so với pointerdown (kéo xoay thì bỏ qua). */
+  var HIT_MIN_PAD = 0.15;
+  // Các nhóm có box hit-test riêng. RADIATOR tách khỏi COOLER_AIO (nó là con của AIO)
+  // để box phần còn lại của AIO (block + ống) không bị phình theo radiator.
+  var HIT_BOX_GROUPS = ['BOARD', 'GPU_STD', 'GPU_LONG', 'COOLER_AIO', 'RADIATOR', 'COOLER_AIR', 'PSU', 'RAM_1', 'RAM_2', 'RAM_3', 'RAM_4'];
+
+  function setupGLBInteract(canvas) {
+    var THREE = glb.THREE;
+    var raycaster = new THREE.Raycaster();
+    var ndc = new THREE.Vector2();
+    var downPos = null;
+    var lastMove = null, moveRaf = false;
+
+    function chainVisible(node, stopAt) {
+      // true nếu node và mọi tổ tiên lên tới (không gồm) stopAt đều visible
+      var n = node;
+      while (n && n !== stopAt) { if (n.visible === false) return false; n = n.parent; }
+      return true;
+    }
+    function isGlassMesh(o) {
+      var mats = Array.isArray(o.material) ? o.material : [o.material];
+      return mats.some(function (m) { return m && /glass/i.test(m.name || ''); });
+    }
+
+    function buildHitBoxes() {
+      glb.scene.updateMatrixWorld(true);
+      var list = [];
+      HIT_BOX_GROUPS.forEach(function (n) {
+        var g = glb.groups[n];
+        if (!g || !chainVisible(g, glb.scene)) return; // nhóm đang ẩn → không có vùng bấm
+        var box = new THREE.Box3();
+        var tmp = new THREE.Box3();
+        var has = false;
+        g.traverse(function (o) {
+          if (!o.isMesh) return;
+          // Bỏ qua subtree là một nhóm hit-test khác (RADIATOR trong COOLER_AIO có box riêng)
+          var anc = o.parent, nested = false;
+          while (anc && anc !== g) { if (HIT_BOX_GROUPS.indexOf(anc.name) !== -1) { nested = true; break; } anc = anc.parent; }
+          if (nested) return;
+          if (!chainVisible(o, g)) return;      // mesh/nhánh con đang ẩn
+          if (isGlassMesh(o)) return;           // kính không tính vào vùng bấm
+          tmp.setFromObject(o);
+          if (tmp.isEmpty()) return;
+          if (!has) { box.copy(tmp); has = true; } else box.union(tmp);
+        });
+        if (!has) return;
+        var size = box.getSize(new THREE.Vector3());
+        box.expandByVector(new THREE.Vector3(
+          Math.max(size.x * 0.10, HIT_MIN_PAD),
+          Math.max(size.y * 0.10, HIT_MIN_PAD),
+          Math.max(size.z * 0.10, HIT_MIN_PAD)));
+        var s2 = box.getSize(new THREE.Vector3());
+        list.push({ name: n, cat: GROUP_TO_CAT[n], box: box, volume: s2.x * s2.y * s2.z });
+      });
+      // Hook chẩn đoán chỉ đọc (kiểm chứng tự động đối chiếu thể tích/kích thước box)
+      window.__rcHitBoxes = list.map(function (e) {
+        var s = e.box.getSize(new THREE.Vector3());
+        var c = e.box.getCenter(new THREE.Vector3());
+        return { name: e.name, cat: e.cat, volume: Math.round(e.volume * 100) / 100,
+                 size: [Math.round(s.x * 100) / 100, Math.round(s.y * 100) / 100, Math.round(s.z * 100) / 100],
+                 center: [Math.round(c.x * 100) / 100, Math.round(c.y * 100) / 100, Math.round(c.z * 100) / 100] };
+      });
+      return list;
+    }
+
+    function pickAt(clientX, clientY) {
+      var rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, glb.camera);
+      if (!glb.hitBoxes) glb.hitBoxes = buildHitBoxes();
+      var best = null;
+      var hitP = new THREE.Vector3();
+      for (var i = 0; i < glb.hitBoxes.length; i++) {
+        var e = glb.hitBoxes[i];
+        if (raycaster.ray.intersectBox(e.box, hitP) && (!best || e.volume < best.volume)) best = e;
+      }
+      if (best) return best.cat;
+      // Fallback cuối: raycast mesh thật của riêng CASE (vỏ, quạt trước...) — bỏ qua kính và phần ẩn.
+      var kase = glb.groups.CASE;
+      if (kase && chainVisible(kase, glb.scene)) {
+        var hits = raycaster.intersectObject(kase, true);
+        for (var j = 0; j < hits.length; j++) {
+          var obj = hits[j].object;
+          if (isGlassMesh(obj)) continue; // kính: bỏ qua, xét hit phía sau
+          var node = obj, groupName = null, hidden = false;
+          while (node && node !== glb.scene) {
+            if (node.visible === false) { hidden = true; break; }
+            if (GROUP_TO_CAT[node.name]) { groupName = node.name; break; }
+            node = node.parent;
+          }
+          if (hidden || !groupName) continue;
+          return GROUP_TO_CAT[groupName];
+        }
+      }
+      return null;
+    }
+
+    function setHover(cat, clientX, clientY) {
+      if (cat !== interact.hoverCat) {
+        interact.hoverCat = cat;
+        applyEmissiveState();
+      }
+      var tip = $('glbTip');
+      if (cat) {
+        canvas.style.cursor = 'pointer';
+        var p = part(cat);
+        tip.innerHTML = '<strong>' + esc(catLabel(cat)) + '</strong> — ' + esc(p ? p.name : '—') + (p ? ' · ' + fmt(p.price) : '');
+        var box = $('viewer3d').getBoundingClientRect();
+        tip.style.left = Math.max(4, Math.min(box.width - 290, clientX - box.left + 14)) + 'px';
+        tip.style.top = (clientY - box.top + 16) + 'px';
+        tip.hidden = false;
+      } else {
+        canvas.style.cursor = '';
+        tip.hidden = true;
+      }
+    }
+
+    canvas.addEventListener('pointermove', function (e) {
+      if (e.pointerType === 'touch') return;
+      lastMove = { x: e.clientX, y: e.clientY };
+      if (moveRaf) return;
+      moveRaf = true;
+      requestAnimationFrame(function () {
+        moveRaf = false;
+        if (!lastMove) return;
+        var m = lastMove; lastMove = null;
+        setHover(pickAt(m.x, m.y), m.x, m.y);
+      });
+    });
+    canvas.addEventListener('pointerenter', function () { glb.controls.autoRotate = false; });
+    canvas.addEventListener('pointerleave', function () {
+      lastMove = null;
+      setHover(null, 0, 0);
+      downPos = null;
+      if (glb.autoWanted) glb.controls.autoRotate = true; // chưa từng kéo thủ công thì khôi phục tự xoay nhẹ
+    });
+    canvas.addEventListener('pointerdown', function (e) { downPos = { x: e.clientX, y: e.clientY, t: Date.now() }; });
+    canvas.addEventListener('pointercancel', function () { downPos = null; });
+    canvas.addEventListener('pointerup', function (e) {
+      if (!downPos) return;
+      var dx = e.clientX - downPos.x, dy = e.clientY - downPos.y;
+      var dt = Date.now() - downPos.t;
+      downPos = null;
+      if (Math.sqrt(dx * dx + dy * dy) >= 6 || dt >= 400) return; // kéo xoay/zoom — không phải click
+      var cat = pickAt(e.clientX, e.clientY);
+      if (cat) activatePicker(cat);
     });
   }
 
@@ -292,6 +551,7 @@
 
   function syncGLB() {
     if (!glb || !glb.ready) return;
+    glb.hitBoxes = null; // hiển thị/scale sắp thay đổi → box hit-test tính lại ở lần pickAt kế tiếp
     var G = glb.groups;
     var gpu = part('gpus'), main = part('mainboards'), ram = part('rams'), cool = part('coolers'), kase = part('cases');
     // GPU: ≤270mm dùng biến thể chuẩn, dài hơn dùng biến thể dài; scale nhẹ theo độ dài
@@ -313,8 +573,10 @@
       var dark = kase.color.indexOf('Trắng') === -1 && kase.color.indexOf('Đen') !== -1;
       glb.caseMats.forEach(function (rec) { rec.mat.color.setHex(dark ? 0x2b3038 : rec.orig); });
     }
-    // Lỗi tương thích: nhóm linh kiện lỗi phát sáng đỏ (theo checkCompat)
-    Object.keys(glb.groupMats).forEach(function (n) { setGroupGlow(n, false); });
+    // Lỗi tương thích (theo checkCompat): chỉ GHI NHẬN tập nhóm lỗi vào glb.errSet.
+    // Emissive thật do applyEmissiveState() áp theo ưu tiên lỗi đỏ > highlight tương tác > gốc,
+    // nên highlight từ picker/hover không bao giờ đè được báo lỗi, và highlight đang bật
+    // cũng tự bám theo khi nhóm hiển thị thay đổi (GPU_STD ↔ GPU_LONG, AIO ↔ tháp).
     var partGroups = {
       gpus: [longGpu ? 'GPU_LONG' : 'GPU_STD'],
       mainboards: ['BOARD'],
@@ -323,10 +585,13 @@
       rams: ['RAM_1', 'RAM_2', 'RAM_3', 'RAM_4'],
       psus: ['PSU'],
     };
+    var errSet = {};
     checkCompat().issues.forEach(function (it) {
       if (it.level !== 'err' || !it.part || !partGroups[it.part]) return;
-      partGroups[it.part].forEach(function (n) { setGroupGlow(n, true); });
+      partGroups[it.part].forEach(function (n) { errSet[n] = true; });
     });
+    glb.errSet = errSet;
+    applyEmissiveState();
     // Hook trạng thái phục vụ kiểm chứng tự động (chỉ đọc)
     var snap = {};
     Object.keys(G).forEach(function (n) { snap[n] = { visible: G[n].visible, scaleX: Math.round(G[n].scale.x * 100) / 100 }; });
@@ -734,9 +999,18 @@
     $('partSearch').addEventListener('input', renderPickers);
     $('partSort').addEventListener('change', renderPickers);
     $('btnResetView').addEventListener('click', function () {
-      if (viewMode === 'glb' && glb) { glb.controls.reset(); glb.controls.autoRotate = true; }
+      if (viewMode === 'glb' && glb) { glb.controls.reset(); glb.controls.autoRotate = true; glb.autoWanted = true; }
       else if (viewMode === 'box' && three) { three.rotY = -0.55; three.rotX = 0.25; three.dist = 8.6; }
     });
+
+    // Highlight tương tác phía picker: dùng delegation trên #partPickers để sống sót qua
+    // mỗi lần renderPickers() dựng lại DOM. focusin/change → bật highlight + nhãn;
+    // rời hẳn khu vực picker → đếm ngược 2,5s tự tắt (armHlTimer cũng chạy sau mỗi lần bật).
+    var pk = $('partPickers');
+    function pickerSelOf(e) { return e.target && e.target.closest ? e.target.closest('select[data-cat]') : null; }
+    pk.addEventListener('focusin', function (e) { var s = pickerSelOf(e); if (s) setPickerHighlight(s.dataset.cat); });
+    pk.addEventListener('change', function (e) { var s = pickerSelOf(e); if (s) setPickerHighlight(s.dataset.cat); });
+    pk.addEventListener('focusout', function (e) { if (!pk.contains(e.relatedTarget)) armHlTimer(); });
 
     $('fpsLaptop').innerHTML = DATA.laptops.map(function (l) {
       return '<option value="' + l.id + '">' + esc(l.name) + ' — ' + esc(l.gpu) + ' ' + l.tgp + 'W — ' + fmt(l.price) + '</option>';
