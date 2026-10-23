@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RigCheck VN — Build PC, Kiểm Tra Tương Thích, Xem FPS Game & Gợi Ý Cấu Hình</title>
+<meta name="description" content="RigCheck VN giúp bạn build PC và chọn laptop: kiểm tra tương thích linh kiện theo thời gian thực, xem FPS game theo cấu hình (tối thiểu / trung bình / tối đa), gợi ý cấu hình theo từng game, ngân sách và nhu cầu đồ hoạ, dựng video, local AI.">
+<meta name="keywords" content="build PC, xây dựng cấu hình PC, kiểm tra tương thích linh kiện, xem FPS game, gợi ý cấu hình chơi game, build PC đồ hoạ, dựng video, local AI, laptop gaming">
+<link rel="canonical" href="https://rigcheck-vn.vercel.app/">
+<meta name="robots" content="index, follow">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RigCheck VN">
+<meta property="og:title" content="RigCheck VN — Build PC, Kiểm Tra Tương Thích & Xem FPS Game">
+<meta property="og:description" content="Chọn linh kiện, kiểm tra tương thích, xem FPS từng game và nhận gợi ý cấu hình PC / laptop theo ngân sách. Có sẵn khung cho đồ hoạ, dựng video và local AI.">
+<meta property="og:url" content="https://rigcheck-vn.vercel.app/">
+<meta property="og:locale" content="vi_VN">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RigCheck VN — Build PC, Kiểm Tra Tương Thích & Xem FPS Game">
+<meta name="twitter:description" content="Build PC 3D, check tương thích thời gian thực, xem FPS min/avg/max theo game và gợi ý cấu hình theo ngân sách.">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://rigcheck-vn.vercel.app/#website",
+      "url": "https://rigcheck-vn.vercel.app/",
+      "name": "RigCheck VN",
+      "inLanguage": "vi-VN",
+      "description": "Website hỗ trợ build PC và laptop: kiểm tra tương thích linh kiện, xem FPS game và gợi ý cấu hình."
+    },
+    {
+      "@type": "WebApplication",
+      "name": "RigCheck VN — Công cụ build PC & kiểm tra FPS game",
+      "url": "https://rigcheck-vn.vercel.app/",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "vi-VN",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "VND" }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "RTX 4060 chơi Cyberpunk 2077 được bao nhiêu FPS?", "acceptedAnswer": { "@type": "Answer", "text": "Ở 1080p High, RTX 4060 đi cùng CPU tầm trung như Ryzen 5 7500F cho khoảng 55–70 FPS trung bình; bật DLSS Quality có thể lên khoảng 85–95 FPS. Đây là số ước tính nội suy từ benchmark, xem chi tiết trong tab Check FPS của RigCheck VN." } },
+        { "@type": "Question", "name": "Nguồn 550W có đủ cho RTX 4070 không?", "acceptedAnswer": { "@type": "Answer", "text": "RTX 4070 có TDP 200W; đi cùng CPU 65–125W thì tổng tải khoảng 400W. Nguồn 550W chất lượng tốt chạy được, nhưng RigCheck VN khuyên dùng 650–750W để có dư địa nâng cấp và độ ồn thấp." } },
+        { "@type": "Question", "name": "Chạy local AI (LLM tại nhà) cần bao nhiêu VRAM?", "acceptedAnswer": { "@type": "Answer", "text": "VRAM quyết định cỡ model chạy được: khoảng 8GB VRAM cho model 7B lượng tử hoá Q4, 16GB cho 14B, 24GB trở lên cho 32B. GPU NVIDIA có lợi thế nhờ CUDA và hệ sinh thái Ollama, LM Studio, ComfyUI." } },
+        { "@type": "Question", "name": "Build PC dựng video Premiere Pro và DaVinci Resolve cần cấu hình gì?", "acceptedAnswer": { "@type": "Answer", "text": "Dựng video nên ưu tiên CPU nhiều nhân, RAM 32GB trở lên và GPU có VRAM lớn (DaVinci Resolve phụ thuộc nhiều vào VRAM). Mục Phần mềm & Local AI của RigCheck VN đang xây dựng phần đề xuất cấu hình chi tiết cho từng phần mềm." } },
+        { "@type": "Question", "name": "Làm sao biết linh kiện PC có tương thích với nhau?", "acceptedAnswer": { "@type": "Answer", "text": "Cần khớp socket CPU với mainboard, đúng loại RAM DDR4/DDR5, GPU và tản nhiệt vừa kích thước case, và nguồn đủ công suất. RigCheck VN kiểm tra tự động tất cả các điều kiện này ngay khi bạn chọn linh kiện ở tab Build PC." } }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<script src="js/data.js" defer></script>
+<script src="js/supabase-config.js" defer></script>
+<script src="js/app.js" defer></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="./" aria-label="RigCheck VN — trang chủ">Rig<span>Check</span> VN</a>
+    <span class="tagline">Build PC · Check tương thích · Xem FPS game</span>
+    <span class="data-status" id="dataStatus">Đang dùng dữ liệu đóng gói kèm trang</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <h1>Build PC, kiểm tra tương thích và xem FPS game theo cấu hình của bạn</h1>
+    <p>RigCheck VN giúp bạn chọn linh kiện PC hoặc laptop, kiểm tra độ tương thích ngay khi chọn,
+       ước tính FPS tối thiểu / trung bình / tối đa cho từng game, và nhận gợi ý cấu hình theo
+       game, ngân sách, nhu cầu đồ hoạ, dựng video và local AI.</p>
+    <div class="stats-strip" id="statsStrip" aria-label="Quy mô dữ liệu"></div>
+  </section>
+
+  <nav class="tabs" aria-label="Chức năng chính">
+    <button class="tab-btn active" data-tab="build" type="button">🖥️ Build PC 3D</button>
+    <button class="tab-btn" data-tab="fps" type="button">🎮 Check FPS</button>
+    <button class="tab-btn" data-tab="reco" type="button">🎯 Gợi ý theo game</button>
+    <button class="tab-btn" data-tab="software" type="button">🎬 Phần mềm &amp; Local AI <span class="badge">Sắp ra mắt</span></button>
+  </nav>
+
+  <!-- ============ TAB 1: BUILD PC ============ -->
+  <section class="tab-panel active" id="panel-build" aria-label="Build PC">
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin-top:0">Xem trước 3D — kéo để xoay, cuộn chuột / pinch để zoom</h3>
+      <div class="viewer3d" id="viewer3d">
+        <div class="fallback" id="viewerFallback">Đang tải khung 3D… Nếu thư viện 3D không tải được (mất mạng/CDN), phần chọn linh kiện bên dưới vẫn hoạt động bình thường.</div>
+        <div class="labels" id="viewerLabels"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="margin-top:0">Chọn linh kiện</h3>
+        <div class="picker-toolbar">
+          <input type="search" id="partSearch" placeholder="Tìm linh kiện… (vd: 5090, 7800X3D, DDR5)" aria-label="Tìm linh kiện">
+          <select id="partSort" aria-label="Sắp xếp linh kiện">
+            <option value="default">Sắp xếp: Mặc định</option>
+            <option value="price-asc">Giá tăng dần</option>
+            <option value="price-desc">Giá giảm dần</option>
+            <option value="name">Theo tên A–Z</option>
+          </select>
+        </div>
+        <div id="partPickers"></div>
+      </div>
+
+      <aside class="card" aria-label="Tổng kết cấu hình">
+        <h3 style="margin-top:0">Tổng kết cấu hình</h3>
+        <div class="muted small">Tổng giá tham khảo</div>
+        <div class="total-price" id="totalPrice">—</div>
+        <div class="small muted" id="totalWatt"></div>
+        <div class="small" id="buildProgress" style="margin-top:6px"></div>
+        <div id="compatList" style="margin-top:10px"></div>
+        <div id="bottleneckBox"></div>
+        <div class="btn-row">
+          <button class="btn" id="btnCopy" type="button">Sao chép cấu hình</button>
+          <button class="btn secondary" id="btnDownload" type="button">Tải báo giá (.txt)</button>
+        </div>
+        <p class="small muted" id="copyStatus" role="status"></p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ TAB 2: CHECK FPS ============ -->
+  <section class="tab-panel" id="panel-fps" aria-label="Check FPS">
+    <div class="card">
+      <h3 style="margin-top:0">FPS ước tính theo cấu hình &amp; game</h3>
+      <div class="field">
+        <label>Nguồn cấu hình</label>
+        <select id="fpsSource">
+          <option value="pc">Dùng build PC ở tab Build</option>
+          <option value="laptop">Laptop có sẵn</option>
+        </select>
+      </div>
+      <div class="field" id="laptopField" style="display:none">
+        <label for="fpsLaptop">Chọn laptop (FPS tính theo TGP GPU riêng từng mẫu)</label>
+        <select id="fpsLaptop"></select>
+      </div>
+      <div class="field"><label>Chọn game</label></div>
+      <div class="game-grid" id="gameGrid"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+        <div class="field"><label for="fpsRes">Độ phân giải</label>
+          <select id="fpsRes"><option value="1080">1920×1080 (1080p)</option><option value="1440">2560×1440 (1440p)</option><option value="2160">3840×2160 (4K)</option></select></div>
+        <div class="field"><label for="fpsSetting">Setting</label>
+          <select id="fpsSetting"><option value="low">Low</option><option value="medium">Medium</option><option value="high" selected>High</option><option value="ultra">Ultra</option></select></div>
+        <div class="field"><label for="fpsUpscale">DLSS / FSR / Frame Gen</label>
+          <select id="fpsUpscale"><option value="off">Tắt</option><option value="dlss">DLSS / FSR Quality</option><option value="fg">DLSS / FSR + Frame Gen</option></select></div>
+      </div>
+      <div id="fpsResult"></div>
+      <p class="small muted">⚠️ FPS hiển thị là <strong>ước tính nội suy</strong> từ dữ liệu benchmark tham chiếu và điểm hiệu năng tương đối của CPU/GPU — không phải số đo trực tiếp trên đúng máy của bạn. FPS thực tế thay đổi theo driver, RAM, nhiệt độ và bản cập nhật game.</p>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3: GỢI Ý THEO GAME ============ -->
+  <section class="tab-panel" id="panel-reco" aria-label="Gợi ý cấu hình theo game">
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin-top:0">Bạn muốn chơi game gì, ở mức FPS nào?</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">
+        <div class="field"><label for="recoGame">Game</label><select id="recoGame"></select></div>
+        <div class="field"><label for="recoTarget">FPS mục tiêu (1080p High)</label>
+          <select id="recoTarget"><option value="60">60 FPS — mượt cơ bản</option><option value="90">90 FPS</option><option value="144" selected>144 FPS — màn hình tần số quét cao</option><option value="240">240 FPS — esports</option></select></div>
+        <div class="field"><label for="recoBudget">Ngân sách tối đa (VNĐ)</label>
+          <input type="number" id="recoBudget" value="35000000" step="1000000" min="5000000"></div>
+      </div>
+      <button class="btn" id="btnReco" type="button">Tạo 3 gói cấu hình</button>
+    </div>
+    <div class="grid-3" id="recoResult"></div>
+  </section>
+
+  <!-- ============ TAB 4: PHẦN MỀM & LOCAL AI ============ -->
+  <section class="tab-panel" id="panel-software" aria-label="Phần mềm và Local AI">
+    <div class="soon-banner">🚧 Mục này đang được xây dựng — khung giao diện và cấu trúc dữ liệu đã sẵn sàng. Phần chấm mức phù hợp &amp; đề xuất cấu hình cho từng phần mềm / công cụ AI sẽ cập nhật trong phiên bản tới, không dùng số liệu bịa.</div>
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin-top:0">Build hiện tại của bạn (dùng chung cho mục này)</h3>
+      <div id="softwareBuildSummary" class="small"></div>
+    </div>
+    <h3>Phần mềm sáng tạo — dựng video, đồ hoạ, 3D</h3>
+    <div class="sw-grid" id="softwareGrid"></div>
+    <h3 style="margin-top:22px">Local AI — chạy mô hình AI ngay trên máy của bạn</h3>
+    <div class="sw-grid" id="aiGrid"></div>
+  </section>
+
+  <!-- ============ NỘI DUNG SEO ============ -->
+  <div class="seo-sections">
+    <section class="card">
+      <h2>RigCheck VN là gì?</h2>
+      <p>RigCheck VN là công cụ hỗ trợ <strong>build PC</strong> và chọn laptop gaming tại Việt Nam. Thay vì tự tra thông số rời rạc, bạn chọn linh kiện một lần và hệ thống tự <strong>kiểm tra tương thích</strong>, tính tổng giá, tổng điện năng, cảnh báo nghẽn cổ chai, rồi <strong>xem FPS game</strong> ngay trên chính cấu hình đó. Xem thêm ở <a href="#panel-build" data-goto="build">tab Build PC 3D</a> và <a href="#panel-fps" data-goto="fps">tab Check FPS</a>.</p>
+    </section>
+
+    <section class="card">
+      <h2>Hướng dẫn build PC không lỗi tương thích</h2>
+      <p>Năm lỗi phổ biến nhất khi tự build PC là: CPU không khớp socket mainboard (LGA1700, LGA1851, AM5 là ba socket desktop phổ biến hiện nay), RAM DDR5 cắm vào main chỉ hỗ trợ DDR4, GPU quá dài so với case, tản nhiệt tháp cao hơn giới hạn của case hoặc radiator AIO không vừa, và nguồn thiếu công suất. RigCheck VN kiểm tra cả năm điều kiện này theo thời gian thực — thử ngay tại <a href="#panel-build" data-goto="build">công cụ build PC</a>.</p>
+    </section>
+
+    <section class="card">
+      <h2>Cách xem FPS game theo cấu hình</h2>
+      <p>FPS phụ thuộc đồng thời vào GPU, CPU, độ phân giải và mức setting. Cùng một game, chuyển từ 1080p lên 1440p có thể làm FPS giảm 25–40%, trong khi bật DLSS/FSR hoặc Frame Generation có thể tăng FPS đáng kể. Ở <a href="#panel-fps" data-goto="fps">tab Check FPS</a>, bạn chọn build PC hoặc một mẫu laptop cụ thể (có tính TGP GPU riêng), chọn game và tuỳ chỉnh các thông số trên để xem FPS tối thiểu, trung bình và tối đa ước tính.</p>
+    </section>
+
+    <section class="card">
+      <h2>Build PC cho đồ hoạ và dựng video</h2>
+      <p>Máy dựng video Premiere Pro, DaVinci Resolve hay làm 3D với Blender có ưu tiên khác hẳn máy chơi game: CPU nhiều nhân, RAM 32–64GB, GPU VRAM lớn và SSD NVMe tốc độ cao quan trọng hơn FPS. RigCheck VN đã chừa sẵn mục <a href="#panel-software" data-goto="software">Phần mềm &amp; Local AI</a> để đề xuất cấu hình theo từng phần mềm trong bản cập nhật tới.</p>
+    </section>
+
+    <section class="card">
+      <h2>Build PC chạy local AI cần gì?</h2>
+      <p>Chạy LLM tại nhà bằng Ollama hay LM Studio và tạo ảnh bằng ComfyUI / Stable Diffusion đều bị giới hạn chủ yếu bởi <strong>VRAM của GPU</strong>: khoảng 8GB cho model 7B, 16GB cho 14B và 24GB trở lên cho 32B (lượng tử hoá Q4). Khi chọn GPU ở <a href="#panel-build" data-goto="build">tab Build</a>, hãy chú ý dung lượng VRAM thay vì chỉ nhìn hiệu năng chơi game.</p>
+    </section>
+
+    <section class="card faq">
+      <h2>Câu hỏi thường gặp</h2>
+      <details><summary>RTX 4060 chơi Cyberpunk 2077 được bao nhiêu FPS?</summary><p>Ở 1080p High, RTX 4060 cùng CPU tầm trung như Ryzen 5 7500F cho khoảng 55–70 FPS trung bình; bật DLSS Quality có thể lên khoảng 85–95 FPS. Đây là số ước tính nội suy từ benchmark — kiểm tra với cấu hình của bạn ở tab Check FPS.</p></details>
+      <details><summary>Nguồn 550W có đủ cho RTX 4070 không?</summary><p>RTX 4070 có TDP 200W; cùng CPU 65–125W thì tổng tải khoảng 400W nên nguồn 550W tốt vẫn chạy được. Tuy nhiên nên chọn 650–750W để dư địa nâng cấp và vận hành êm hơn — công cụ build sẽ tự cảnh báo nếu nguồn thiếu.</p></details>
+      <details><summary>Chạy local AI (LLM tại nhà) cần bao nhiêu VRAM?</summary><p>Khoảng 8GB VRAM cho model 7B Q4, 16GB cho 14B, 24GB+ cho 32B. GPU NVIDIA có lợi thế CUDA với Ollama, LM Studio và ComfyUI.</p></details>
+      <details><summary>Build PC dựng video Premiere Pro và DaVinci Resolve cần cấu hình gì?</summary><p>Ưu tiên CPU nhiều nhân, RAM 32GB trở lên, GPU VRAM lớn (đặc biệt với DaVinci Resolve) và SSD NVMe nhanh cho cache/media. Mục Phần mềm &amp; Local AI sẽ có đề xuất chi tiết theo từng phần mềm.</p></details>
+      <details><summary>Làm sao biết linh kiện PC có tương thích với nhau?</summary><p>Kiểm tra socket CPU–main, loại RAM DDR4/DDR5, kích thước GPU/tản so với case và công suất nguồn. RigCheck VN tự động kiểm tra tất cả ngay khi bạn chọn linh kiện.</p></details>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p><strong>RigCheck VN</strong> — Build PC, kiểm tra tương thích, xem FPS game, gợi ý cấu hình theo game, đồ hoạ, dựng video và local AI.</p>
+    <p id="priceNote">Giá linh kiện và laptop là giá tham khảo đối chiếu niêm yết online tại các shop linh kiện VN, thời điểm 10/2026 — không phải giá bán của RigCheck VN. FPS là ước tính nội suy từ benchmark tham chiếu.</p>
+    <p>Điều hướng: <a href="#panel-build" data-goto="build">Build PC</a> · <a href="#panel-fps" data-goto="fps">Check FPS</a> · <a href="#panel-reco" data-goto="reco">Gợi ý theo game</a> · <a href="#panel-software" data-goto="software">Phần mềm &amp; Local AI</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
