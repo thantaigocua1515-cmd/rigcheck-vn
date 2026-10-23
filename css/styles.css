@@ -88,6 +88,10 @@ h3{font-size:16px;margin:0 0 8px}
 .viewer3d canvas:active{cursor:grabbing}
 .viewer3d .fallback{padding:24px;color:var(--muted)}
 .viewer3d .labels{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted)}
+.viewer3d .model-status{position:absolute;right:12px;bottom:10px;font-size:12px;color:var(--muted)}
+.viewer3d .reset-view{position:absolute;right:12px;top:10px;font-size:12.5px;font-weight:600;
+  padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--text);cursor:pointer}
+.viewer3d .reset-view:hover{border-color:var(--accent);color:var(--accent)}
 
 /* FPS */
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}

@@ -81,17 +81,17 @@
     if (!cpu || !gpu || !main || !ram || !psu || !kase || !cool) {
       return { issues: [{ level: 'warn', msg: 'Hãy chọn đủ 8 loại linh kiện để kiểm tra tương thích đầy đủ.' }], totalPrice: 0, estWatt: 0, requiredPsu: 0 };
     }
-    if (cpu.socket !== main.socket) issues.push({ level: 'err', msg: 'Socket không khớp: CPU ' + cpu.socket + ' không lắp được trên main ' + main.socket + ' (' + main.name + ').' });
-    if (ram.type !== main.ramType) issues.push({ level: 'err', msg: 'RAM không khớp: main ' + main.name + ' chỉ hỗ trợ ' + main.ramType + ', bạn đang chọn RAM ' + ram.type + '.' });
-    if (gpu.length > kase.gpuMax) issues.push({ level: 'err', msg: 'GPU quá dài: ' + gpu.name + ' dài ' + gpu.length + 'mm, case ' + kase.name + ' chỉ chứa tối đa ' + kase.gpuMax + 'mm.' });
-    if (FORM_ORDER[main.form] > FORM_ORDER[kase.maxForm]) issues.push({ level: 'err', msg: 'Main quá lớn: main ' + main.form + ' không vừa case ' + kase.name + ' (tối đa ' + kase.maxForm + ').' });
-    if (cool.type === 'air' && cool.height > kase.coolerMax) issues.push({ level: 'err', msg: 'Tản tháp quá cao: ' + cool.name + ' cao ' + cool.height + 'mm, case chỉ hỗ trợ tối đa ' + kase.coolerMax + 'mm.' });
-    if (cool.type === 'aio' && cool.radiator > kase.radiatorMax) issues.push({ level: 'err', msg: 'Radiator AIO quá lớn: ' + cool.radiator + 'mm, case ' + kase.name + ' chỉ gắn tối đa ' + kase.radiatorMax + 'mm.' });
-    if (cpu.tdp > cool.tdpSupport) issues.push({ level: 'warn', msg: 'Tản nhiệt hơi đuối: TDP CPU ' + cpu.tdp + 'W cao hơn mức khuyến nghị của ' + cool.name + ' (' + cool.tdpSupport + 'W).' });
+    if (cpu.socket !== main.socket) issues.push({ level: 'err', part: 'mainboards', msg: 'Socket không khớp: CPU ' + cpu.socket + ' không lắp được trên main ' + main.socket + ' (' + main.name + ').' });
+    if (ram.type !== main.ramType) issues.push({ level: 'err', part: 'rams', msg: 'RAM không khớp: main ' + main.name + ' chỉ hỗ trợ ' + main.ramType + ', bạn đang chọn RAM ' + ram.type + '.' });
+    if (gpu.length > kase.gpuMax) issues.push({ level: 'err', part: 'gpus', msg: 'GPU quá dài: ' + gpu.name + ' dài ' + gpu.length + 'mm, case ' + kase.name + ' chỉ chứa tối đa ' + kase.gpuMax + 'mm.' });
+    if (FORM_ORDER[main.form] > FORM_ORDER[kase.maxForm]) issues.push({ level: 'err', part: 'mainboards', msg: 'Main quá lớn: main ' + main.form + ' không vừa case ' + kase.name + ' (tối đa ' + kase.maxForm + ').' });
+    if (cool.type === 'air' && cool.height > kase.coolerMax) issues.push({ level: 'err', part: 'coolers', msg: 'Tản tháp quá cao: ' + cool.name + ' cao ' + cool.height + 'mm, case chỉ hỗ trợ tối đa ' + kase.coolerMax + 'mm.' });
+    if (cool.type === 'aio' && cool.radiator > kase.radiatorMax) issues.push({ level: 'err', part: 'coolers', msg: 'Radiator AIO quá lớn: ' + cool.radiator + 'mm, case ' + kase.name + ' chỉ gắn tối đa ' + kase.radiatorMax + 'mm.' });
+    if (cpu.tdp > cool.tdpSupport) issues.push({ level: 'warn', part: 'coolers', msg: 'Tản nhiệt hơi đuối: TDP CPU ' + cpu.tdp + 'W cao hơn mức khuyến nghị của ' + cool.name + ' (' + cool.tdpSupport + 'W).' });
 
     var estWatt = cpu.tdp + gpu.tdp + 80; // +80W cho main/RAM/SSD/quạt
     var requiredPsu = Math.ceil(estWatt * 1.4 / 50) * 50;
-    if (psu.watt < estWatt) issues.push({ level: 'err', msg: 'Nguồn không đủ: tải ước tính ~' + estWatt + 'W, nguồn ' + psu.watt + 'W có nguy cơ sập nguồn.' });
+    if (psu.watt < estWatt) issues.push({ level: 'err', part: 'psus', msg: 'Nguồn không đủ: tải ước tính ~' + estWatt + 'W, nguồn ' + psu.watt + 'W có nguy cơ sập nguồn.' });
     else if (psu.watt < requiredPsu) issues.push({ level: 'warn', msg: 'Nguồn hơi sát: tải ước tính ~' + estWatt + 'W, nên dùng nguồn từ ~' + requiredPsu + 'W để dư địa nâng cấp.' });
 
     var totalPrice = CATEGORIES.reduce(function (s, c) { return s + part(c.key).price; }, 0);
@@ -130,15 +130,196 @@
     return lines.join('\n');
   }
 
-  /* ---------- 3D (Three.js) ---------- */
-  var three = null;
+  /* ---------- 3D: model Blender (GLB) làm chính, khối hộp procedural làm dự phòng ---------- */
+  var three = null;      // trạng thái renderer khối hộp (fallback, THREE UMD r128)
+  var glb = null;        // trạng thái renderer GLB (three module 0.160)
+  var viewMode = 'none'; // 'glb' | 'box' | 'none'
+
+  function sync3D() {
+    if (viewMode === 'glb') syncGLB();
+    else if (viewMode === 'box') drawPC();
+  }
+
   function init3D() {
+    $('viewerFallback').textContent = 'Đang tải model 3D Blender… Nếu tải chậm hoặc lỗi mạng, khung sẽ tự chuyển sang bản dựng đơn giản.';
+    initGLB().then(function (ok) {
+      if (!ok) initBox3D();
+    }, function () { initBox3D(); });
+  }
+
+  /* ----- Đường GLB ----- */
+  function initGLB() {
+    var box = $('viewer3d');
+    return Promise.all([
+      import('three'),
+      import('three/addons/loaders/GLTFLoader.js'),
+      import('three/addons/controls/OrbitControls.js'),
+    ]).then(function (mods) {
+      var THREE = mods[0];
+      var GLTFLoader = mods[1].GLTFLoader;
+      var OrbitControls = mods[2].OrbitControls;
+      var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(box.clientWidth, 340);
+      if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+      var scene = new THREE.Scene();
+      var camera = new THREE.PerspectiveCamera(42, box.clientWidth / 340, 0.1, 100);
+      camera.position.set(6.6, 4.4, 7.6);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0xdbe4ef, 1.15));
+      var key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(5, 9, 6); scene.add(key);
+      var fill = new THREE.DirectionalLight(0xcfe2ff, 0.55); fill.position.set(-6, 3, -5); scene.add(fill);
+      var controls = new OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 2.0, 0);
+      controls.enableDamping = true; controls.dampingFactor = 0.08;
+      controls.minDistance = 5; controls.maxDistance = 16;
+      controls.maxPolarAngle = Math.PI * 0.62;
+      controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
+      controls.addEventListener('start', function () { controls.autoRotate = false; });
+      controls.update(); controls.saveState();
+      glb = { THREE: THREE, renderer: renderer, scene: scene, camera: camera, controls: controls, groups: {}, groupMats: {}, caseMats: [], ready: false };
+      var loader = new GLTFLoader();
+      return new Promise(function (resolve, reject) {
+        var to = setTimeout(function () { reject(new Error('GLB timeout')); }, 25000);
+        loader.load('assets/case.glb',
+          function (g) { clearTimeout(to); resolve(g); },
+          undefined,
+          function (e) { clearTimeout(to); reject(e || new Error('GLB load error')); });
+      }).then(function (gltf) {
+        scene.add(gltf.scene);
+        if (!collectGLBGroups(gltf.scene)) throw new Error('GLB thiếu nhóm CASE/GPU_STD');
+        box.insertBefore(renderer.domElement, box.firstChild);
+        $('viewerFallback').style.display = 'none';
+        $('btnResetView').hidden = false;
+        $('modelStatus').textContent = 'Model 3D: Blender (GLB)';
+        viewMode = 'glb'; glb.ready = true;
+        (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+        syncGLB();
+        return true;
+      });
+    }).catch(function () { glb = null; return false; });
+  }
+
+  // Clone material theo từng mesh (tránh dùng chung material giữa các nhóm khi tint/phát sáng),
+  // đăng ký material theo nhóm, gán lại kính và lưu màu vỏ case gốc.
+  function collectGLBGroups(root) {
+    root.traverse(function (o) {
+      if (o.isMesh) {
+        var mats = Array.isArray(o.material) ? o.material : [o.material];
+        var cloned = mats.map(function (m) { return m ? m.clone() : m; });
+        o.material = Array.isArray(o.material) ? cloned : cloned[0];
+      }
+    });
+    var NAMES = ['CASE', 'BOARD', 'GPU_STD', 'GPU_LONG', 'COOLER_AIO', 'COOLER_AIR', 'RADIATOR', 'PSU', 'RAM_1', 'RAM_2', 'RAM_3', 'RAM_4'];
+    NAMES.forEach(function (n) { var o = root.getObjectByName(n); if (o) glb.groups[n] = o; });
+    if (!glb.groups.CASE || !glb.groups.GPU_STD) return false;
+    NAMES.forEach(function (n) {
+      var g = glb.groups[n]; if (!g) return;
+      var seen = [];
+      g.traverse(function (o) {
+        if (!o.isMesh) return;
+        var mats = Array.isArray(o.material) ? o.material : [o.material];
+        mats.forEach(function (m) {
+          if (m && seen.indexOf(m) === -1) {
+            seen.push(m);
+            (glb.groupMats[n] = glb.groupMats[n] || []).push({
+              mat: m,
+              emissive: m.emissive ? m.emissive.getHex() : 0,
+              emissiveIntensity: m.emissiveIntensity != null ? m.emissiveIntensity : 1,
+            });
+          }
+        });
+      });
+    });
+    // Kính: shader Blender không qua được glTF → gán lại trong suốt tại đây
+    glb.groups.CASE.traverse(function (o) {
+      if (!o.isMesh) return;
+      var mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach(function (m) {
+        if (!m || !/glass/i.test(m.name || '')) return;
+        m.transparent = true;
+        m.opacity = /front/i.test(m.name) ? 0.38 : 0.22;
+        m.roughness = 0.08; m.metalness = 0.0;
+        m.depthWrite = false;
+        m.side = glb.THREE.DoubleSide;
+        m.needsUpdate = true;
+      });
+    });
+    // Màu vỏ: lưu màu gốc của các material sơn trắng thuộc CASE để tint Đen/Trắng
+    glb.groups.CASE.traverse(function (o) {
+      if (!o.isMesh) return;
+      var mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach(function (m) {
+        if (m && /white/i.test(m.name || '') && m.color) glb.caseMats.push({ mat: m, orig: m.color.getHex() });
+      });
+    });
+    return true;
+  }
+
+  function setGroupGlow(name, on) {
+    (glb.groupMats[name] || []).forEach(function (rec) {
+      if (!rec.mat.emissive) return;
+      if (on) { rec.mat.emissive.setHex(0xff2418); rec.mat.emissiveIntensity = 0.9; }
+      else { rec.mat.emissive.setHex(rec.emissive); rec.mat.emissiveIntensity = rec.emissiveIntensity; }
+    });
+  }
+
+  function clampScale(v) { return Math.max(0.95, Math.min(1.1, v)); }
+
+  function syncGLB() {
+    if (!glb || !glb.ready) return;
+    var G = glb.groups;
+    var gpu = part('gpus'), main = part('mainboards'), ram = part('rams'), cool = part('coolers'), kase = part('cases');
+    // GPU: ≤270mm dùng biến thể chuẩn, dài hơn dùng biến thể dài; scale nhẹ theo độ dài
+    var longGpu = !!(gpu && gpu.length > 270);
+    if (G.GPU_STD) { G.GPU_STD.visible = !longGpu; G.GPU_STD.scale.x = clampScale((gpu ? gpu.length : 245) / 245); }
+    if (G.GPU_LONG) { G.GPU_LONG.visible = longGpu; if (longGpu) G.GPU_LONG.scale.x = clampScale(gpu.length / 320); }
+    // Tản nhiệt: air ↔ AIO; radiator scale theo 240/280/360
+    var isAir = !!(cool && cool.type === 'air');
+    if (G.COOLER_AIR) G.COOLER_AIR.visible = isAir;
+    if (G.COOLER_AIO) G.COOLER_AIO.visible = !isAir;
+    if (!isAir && G.RADIATOR && cool) G.RADIATOR.scale.x = Math.max(0.6, (cool.radiator || 360) / 360);
+    // RAM: hiện đúng số thanh
+    var sticks = ram ? ram.sticks : 2;
+    for (var i = 1; i <= 4; i++) { if (G['RAM_' + i]) G['RAM_' + i].visible = i <= sticks; }
+    // Mainboard: scale theo form factor
+    if (G.BOARD) { var fs = !main ? 1 : (main.form === 'ATX' ? 1 : (main.form === 'mATX' ? 0.92 : 0.8)); G.BOARD.scale.set(fs, 1, fs); }
+    // Case: tint vỏ theo tông màu của case được chọn
+    if (kase && glb.caseMats.length) {
+      var dark = kase.color.indexOf('Trắng') === -1 && kase.color.indexOf('Đen') !== -1;
+      glb.caseMats.forEach(function (rec) { rec.mat.color.setHex(dark ? 0x2b3038 : rec.orig); });
+    }
+    // Lỗi tương thích: nhóm linh kiện lỗi phát sáng đỏ (theo checkCompat)
+    Object.keys(glb.groupMats).forEach(function (n) { setGroupGlow(n, false); });
+    var partGroups = {
+      gpus: [longGpu ? 'GPU_LONG' : 'GPU_STD'],
+      mainboards: ['BOARD'],
+      coolers: [isAir ? 'COOLER_AIR' : 'COOLER_AIO'],
+      cases: ['CASE'],
+      rams: ['RAM_1', 'RAM_2', 'RAM_3', 'RAM_4'],
+      psus: ['PSU'],
+    };
+    checkCompat().issues.forEach(function (it) {
+      if (it.level !== 'err' || !it.part || !partGroups[it.part]) return;
+      partGroups[it.part].forEach(function (n) { setGroupGlow(n, true); });
+    });
+    // Hook trạng thái phục vụ kiểm chứng tự động (chỉ đọc)
+    var snap = {};
+    Object.keys(G).forEach(function (n) { snap[n] = { visible: G[n].visible, scaleX: Math.round(G[n].scale.x * 100) / 100 }; });
+    window.__rcGroups = snap; window.__rcViewMode = 'glb';
+  }
+
+  /* ----- Đường dự phòng: khối hộp procedural (THREE UMD r128 như bản cũ) ----- */
+  function initBox3D() {
     if (typeof THREE === 'undefined') { $('viewerFallback').textContent = 'Không tải được thư viện 3D (CDN bị chặn/mất mạng). Phần chọn linh kiện bên dưới vẫn dùng bình thường.'; return; }
+    viewMode = 'box';
+    window.__rcViewMode = 'box';
+    $('modelStatus').textContent = 'Model 3D: bản dựng đơn giản (dự phòng — không tải được model Blender)';
     var box = $('viewer3d');
     var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(box.clientWidth, 340);
     box.insertBefore(renderer.domElement, box.firstChild);
     $('viewerFallback').style.display = 'none';
+    $('btnResetView').hidden = false;
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(42, box.clientWidth / 340, 0.1, 100);
     camera.position.set(5.2, 3.4, 6.4);
@@ -419,7 +600,7 @@
   }
 
   /* ---------- Khởi tạo ---------- */
-  function renderAll() { renderPickers(); renderSummary(); drawPC(); renderFps(); renderSoftwareBuild(); }
+  function renderAll() { renderPickers(); renderSummary(); sync3D(); renderFps(); renderSoftwareBuild(); }
 
   function init() {
     $('statsStrip').innerHTML =
@@ -432,6 +613,10 @@
     document.querySelectorAll('[data-goto]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); switchTab(a.dataset.goto); }); });
     $('partSearch').addEventListener('input', renderPickers);
     $('partSort').addEventListener('change', renderPickers);
+    $('btnResetView').addEventListener('click', function () {
+      if (viewMode === 'glb' && glb) { glb.controls.reset(); glb.controls.autoRotate = true; }
+      else if (viewMode === 'box' && three) { three.rotY = -0.55; three.rotX = 0.25; three.dist = 8.6; }
+    });
 
     $('fpsLaptop').innerHTML = DATA.laptops.map(function (l) {
       return '<option value="' + l.id + '">' + esc(l.name) + ' — ' + esc(l.gpu) + ' ' + l.tgp + 'W — ' + fmt(l.price) + '</option>';

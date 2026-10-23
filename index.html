@@ -59,6 +59,12 @@
 
 <link rel="stylesheet" href="css/styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
 <script src="js/data.js" defer></script>
 <script src="js/supabase-config.js" defer></script>
 <script src="js/app.js" defer></script>
@@ -97,6 +103,8 @@
       <div class="viewer3d" id="viewer3d">
         <div class="fallback" id="viewerFallback">Đang tải khung 3D… Nếu thư viện 3D không tải được (mất mạng/CDN), phần chọn linh kiện bên dưới vẫn hoạt động bình thường.</div>
         <div class="labels" id="viewerLabels"></div>
+        <div class="model-status" id="modelStatus" aria-live="polite"></div>
+        <button type="button" class="reset-view" id="btnResetView" hidden>⟲ Đặt lại góc nhìn</button>
       </div>
     </div>
 
